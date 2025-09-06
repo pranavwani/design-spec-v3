@@ -28,25 +28,29 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const body = context.payload.issue.body || "";
-            // Helper to capture the line immediately following a bold label (Issue Forms render as **Label**\nvalue)
-            function field(label){
-              const re = new RegExp(`\\*\\*${label}\\*\\*\\s*\\r?\\n([^\\r\\n]+)`,"i");
+           const body = context.payload.issue.body || "";
+
+           // Match **Label...**\nvalue  (label can have extra text after the prefix)
+           function fieldByPrefix(prefix){
+              const re = new RegExp(`\\*\\*${prefix}[^*]*\\*\\*\\s*\\r?\\n([^\\r\\n]+)`, "i");
               const m = body.match(re);
               return m ? m[1].trim() : "";
-            }
-            const titleLine = field("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
-            const family = field("Spec family \\(folder key\\)") || "";
-            const version = field("Version \\(vN\\)") || "";
-            const owner = field("Spec owner \\(GitHub handle\\)") || "";
-            if(!family || !version){
+           }
+
+           const titleLine = fieldByPrefix("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
+           const family    = fieldByPrefix("Spec family");              // tolerates "(folder key)" etc.
+           const version   = fieldByPrefix("Version");                  // tolerates "(v1)", "(vN)", etc.
+           const owner     = fieldByPrefix("Spec owner");               // tolerates "(GitHub handle)"
+
+           if(!family || !version){
               core.setFailed("Could not parse 'family' or 'version' from the issue form. Ensure the Issue Form field labels match the workflow.");
-            }
-            core.setOutput("title", titleLine);
-            core.setOutput("family", family);
-            core.setOutput("version", version);
-            core.setOutput("owner", owner || "");
-            core.setOutput("issue_number", context.payload.issue.number.toString());
+           }
+
+           core.setOutput("title", titleLine);
+           core.setOutput("family", family);
+           core.setOutput("version", version);
+           core.setOutput("owner", owner || "");
+           core.setOutput("issue_number", context.payload.issue.number.toString());
 
       - name: Set env from parsed fields
         run: |
