@@ -6,4 +6,4 @@ theme: null
 collections:
   specs:
     output: true
-    permalink: /_specs/:path/
+    permalink: /specs/:path/
