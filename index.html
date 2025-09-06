@@ -1,78 +1,95 @@
 ---
-layout: base
-title: Home
+layout: none
 ---
 
-<header class="hero">
-  <h1>Welcome to {{ site.title }}</h1>
-  <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
-  <div class="actions">
-    <a class="btn primary" href="{{ site.baseurl }}/../../issues/new?template=new-spec.yml">
-      Submit a New Design Spec
-    </a>
-  </div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{ site.title }}</title>
+<link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body>
+<main class="wrap">
+  <header class="hero">
+    <h1>Welcome to {{ site.title }}</h1>
+    <p class="lead">Submit, draft, review, and publish design specs.</p>
 
-  <div class="tabs" role="tablist" aria-label="Spec status">
-    <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
-    <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
-    <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
-  </div>
+    <div class="actions">
+      <!-- Link to your Issue Form template -->
+      <a class="btn primary"
+         href="{{ site.baseurl }}/../../issues/new?template=new-spec.yml">
+        Submit a New Design Spec
+      </a>
+    </div>
 
-  <div class="searchbar">
-    <input id="q" type="search" placeholder="Search by title or id…" aria-label="Search specs">
-  </div>
-</header>
+    <div class="tabs" role="tablist" aria-label="Spec status">
+      <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
+    </div>
 
-{% assign specs = site.specs | sort: 'id' %}
+    <div class="searchbar">
+      <input id="q" type="search" placeholder="Search specs by title or id…" aria-label="Search specs">
+    </div>
+  </header>
 
-<section class="panel">
-  <table id="specTable" aria-live="polite">
-    <thead>
-      <tr>
-        <th style="width:80px">ID</th>
-        <th>Title</th>
-        <th style="width:160px">Created At</th>
-        <th style="width:120px">Access</th>
-      </tr>
-    </thead>
-    <tbody id="rows">
-      {% for s in specs %}
+  {% assign specs_sorted = site.specs | sort: 'id' %}
+
+  <section class="panel">
+    <table id="specTable" aria-live="polite">
+      <thead>
+        <tr>
+          <th style="width:80px">ID</th>
+          <th>Title</th>
+          <th style="width:160px">Owner</th>
+          <th style="width:120px">Access</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        {% for s in specs_sorted %}
         {% if s.name == 'index.md' %}
         <tr data-status="{{ s.status | downcase }}">
           <td data-label="ID">{{ s.id }}</td>
           <td data-label="Title">{{ s.title }}</td>
-          <td data-label="Created At">{{ s.created_at }}</td>
+          <td data-label="Owner">{{ s.owner }}</td>
           <td data-label="Access"><a class="view-btn" href="{{ s.url | relative_url }}">View</a></td>
         </tr>
         {% endif %}
-      {% endfor %}
-    </tbody>
-  </table>
-  <div id="empty" class="empty" hidden>No specs match this filter.</div>
-</section>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div id="empty" class="empty" hidden>No specs match this filter.</div>
+  </section>
+</main>
 
 <script>
-const tabs=[...document.querySelectorAll('.tab')];
-const rows=[...document.querySelectorAll('#rows tr')];
-const q=document.getElementById('q');
-const empty=document.getElementById('empty');
+const tabs = document.querySelectorAll('.tab');
+const rows = [...document.querySelectorAll('#rows tr')];
+const q = document.getElementById('q');
+const empty = document.getElementById('empty');
 
 function applyFilters(){
-  const tab=document.querySelector('.tab[aria-selected="true"]').dataset.target;
-  const term=(q.value||'').toLowerCase().trim();
-  let shown=0;
-  rows.forEach(r=>{
-    const matchTab=(r.dataset.status||'')===tab;
-    const matchTerm=!term || (r.textContent||'').toLowerCase().includes(term);
-    const show=matchTab && matchTerm;
-    r.hidden=!show; if(show) shown++;
+  const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
+  const term = q.value.trim().toLowerCase();
+  let visible = 0;
+  rows.forEach(r => {
+    const inTab = (r.dataset.status || '') === activeTab;
+    const text = (r.textContent || '').toLowerCase();
+    const match = !term || text.includes(term);
+    const show = inTab && match;
+    r.hidden = !show;
+    if (show) visible++;
   });
-  empty.hidden=shown!==0;
+  empty.hidden = visible !== 0;
 }
-tabs.forEach(t=>t.addEventListener('click',()=>{
-  tabs.forEach(x=>x.setAttribute('aria-selected', String(x===t)));
+tabs.forEach(t => t.addEventListener('click', () => {
+  tabs.forEach(x => x.setAttribute('aria-selected', String(x === t)));
   applyFilters();
 }));
-q.addEventListener('input',applyFilters);
-applyFilters();
+q.addEventListener('input', applyFilters);
+applyFilters(); // default Active
 </script>
+</body>
+</html>

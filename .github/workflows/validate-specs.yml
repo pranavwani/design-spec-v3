@@ -1,0 +1,23 @@
+name: Validate Specs
+on: [pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check front-matter & IDs
+        run: |
+          err=0
+          ids=$(grep -RhoP '^id:\s*\K[0-9]+' specs/*/index.md || true)
+          # Unique IDs
+          dup=$(echo "$ids" | sort | uniq -d)
+          [ -z "$dup" ] || { echo "::error::Duplicate spec id(s): $dup"; err=1; }
+          # Required fields and valid statuses
+          for f in specs/*/index.md; do
+            for key in id title status owner; do
+              grep -q "^$key:" "$f" || { echo "::error file=$f::Missing $key"; err=1; }
+            done
+            grep -Eq '^status:\s*(active|in-progress|deprecated)$' "$f" \
+              || { echo "::error file=$f::Invalid status"; err=1; }
+          done
+          exit $err

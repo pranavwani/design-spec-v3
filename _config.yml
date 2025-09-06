@@ -1,12 +1,11 @@
-title: Veltmix Design Specs
+title: VoltMX Design Specs
 description: Design specifications
-markdown: kramdown
+url: ""         # set if you have a custom domain
+baseurl: ""     # set to "/<repo>" if publishing from the repo root name
 theme: null
+markdown: kramdown
 
 collections:
   specs:
     output: true
-    permalink: /specs/:path/   # /specs/0001-ssc/
-
-# If publishing from /docs or a repo named veltmix-specs:
-# baseurl: "/veltmix-specs"
+    permalink: /specs/:path/     # /specs/0001-ssc/
