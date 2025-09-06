@@ -1,0 +1,143 @@
+name: Auto scaffold spec from issue
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  scaffold:
+    if: >
+      github.event.issue.state == 'open' &&
+      (
+        contains(github.event.issue.labels.*.name, 'spec:proposal') ||
+        (github.event.action == 'labeled' && github.event.label.name == 'spec:proposal')
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Extract fields from Issue Form
+        id: fields
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || "";
+            // Helper to capture the line immediately following a bold label (Issue Forms render as **Label**\nvalue)
+            function field(label){
+              const re = new RegExp(`\\*\\*${label}\\*\\*\\s*\\r?\\n([^\\r\\n]+)`,"i");
+              const m = body.match(re);
+              return m ? m[1].trim() : "";
+            }
+            const titleLine = field("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
+            const family = field("Spec family \\(folder key\\)") || "";
+            const version = field("Version \\(vN\\)") || "";
+            const owner = field("Spec owner \\(GitHub handle\\)") || "";
+            if(!family || !version){
+              core.setFailed("Could not parse 'family' or 'version' from the issue form. Ensure the Issue Form field labels match the workflow.");
+            }
+            core.setOutput("title", titleLine);
+            core.setOutput("family", family);
+            core.setOutput("version", version);
+            core.setOutput("owner", owner || "");
+            core.setOutput("issue_number", context.payload.issue.number.toString());
+
+      - name: Set env from parsed fields
+        run: |
+          echo "TITLE=${{ steps.fields.outputs.title }}" >> $GITHUB_ENV
+          echo "FAMILY=${{ steps.fields.outputs.family }}" >> $GITHUB_ENV
+          echo "VERSION=${{ steps.fields.outputs.version }}" >> $GITHUB_ENV
+          echo "OWNER=${{ steps.fields.outputs.owner }}" >> $GITHUB_ENV
+          echo "ISSUE_NUMBER=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
+          echo "TODAY=$(date +%F)" >> $GITHUB_ENV
+          # sanitize branch name
+          SAFE_FAMILY=$(echo "${{ steps.fields.outputs.family }}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+          SAFE_VERSION=$(echo "${{ steps.fields.outputs.version }}" | tr -cd 'a-zA-Z0-9-')
+          echo "BRANCH=spec/${SAFE_FAMILY}-${SAFE_VERSION}" >> $GITHUB_ENV
+          echo "DIR=_specs/${SAFE_FAMILY}/${SAFE_VERSION}" >> $GITHUB_ENV
+
+      - name: Scaffold spec folder
+        run: |
+          set -eux
+          mkdir -p "$DIR"
+          # index.md
+          cat > "$DIR/index.md" <<'EOF'
+          ---
+          layout: spec
+          id: 0
+          family: ${FAMILY}
+          version: ${VERSION}
+          title: ${TITLE}
+          status: in-progress
+          owner: "${OWNER}"
+          team: ""
+          created_at: ${TODAY}
+          updated_at:
+          tags: []
+          changelog: []
+          ---
+          ## Summary
+          (copy details from the proposal issue #${ISSUE_NUMBER})
+          
+          ## Goals / Non-goals
+          - 
+          
+          ## Acceptance Criteria
+          - 
+          
+          ## Related Docs
+          - [HLD](./hld.md) · [LLD](./lld.md) · [API](./api.md) · [UX](./ux.md)
+          EOF
+
+          # sibling docs
+          for f in hld lld api ux; do
+            cat > "$DIR/${f}.md" <<EOF
+            ---
+            layout: spec
+            title: ${TITLE} — $(echo $f | tr a-z A-Z)
+            ---
+            # $(echo $f | tr a-z A-Z)
+            (fill me)
+            EOF
+          done
+
+          # ensure git sees files
+          git add "$DIR"
+
+      - name: Create draft PR
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ env.BRANCH }}
+          title: "[Spec] ${ { env.TITLE } } (scaffold)"
+          body: |
+            Closes #${{ env.ISSUE_NUMBER }}
+
+            This PR scaffolds `_specs/${{ env.FAMILY }}/${{ env.VERSION }}/` with:
+            - index.md (status: in-progress)
+            - hld.md / lld.md / api.md / ux.md placeholders
+
+            Please fill out content and set `id` to the next available integer before merge.
+          commit-message: "chore(spec): scaffold ${{ env.FAMILY }}/${{ env.VERSION }} from issue #${{ env.ISSUE_NUMBER }}"
+          draft: true
+          labels: spec:proposal,in-progress
+
+      - name: Comment PR link on the issue
+        if: steps.cpr.outputs.pull-request-url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prUrl = "${{ steps.cpr.outputs.pull-request-url }}";
+            const issue_number = Number(process.env.ISSUE_NUMBER);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body: `🚀 Scaffolded a draft PR: ${prUrl}`
+            });
