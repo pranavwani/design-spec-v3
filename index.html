@@ -1,95 +1,112 @@
 ---
-layout: none
+layout: base
+title: Home
 ---
-
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{{ site.title }}</title>
-<link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
-</head>
-<body>
-<main class="wrap">
-  <header class="hero">
-    <h1>Welcome to {{ site.title }}</h1>
-    <p class="lead">Submit, draft, review, and publish design specs.</p>
-
-    <div class="actions">
-      <!-- Link to your Issue Form template -->
-      <a class="btn primary"
-         href="{{ site.baseurl }}/../../issues/new?template=new-spec.yml">
-        Submit a New Design Spec
-      </a>
-    </div>
-
-    <div class="tabs" role="tablist" aria-label="Spec status">
-      <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
-      <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
-      <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
-    </div>
-
-    <div class="searchbar">
-      <input id="q" type="search" placeholder="Search specs by title or id…" aria-label="Search specs">
-    </div>
-  </header>
-
-  {% assign specs_sorted = site.specs | sort: 'id' %}
-
-  <section class="panel">
-    <table id="specTable" aria-live="polite">
-      <thead>
-        <tr>
-          <th style="width:80px">ID</th>
-          <th>Title</th>
-          <th style="width:160px">Owner</th>
-          <th style="width:120px">Access</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        {% for s in specs_sorted %}
-        {% if s.name == 'index.md' %}
-        <tr data-status="{{ s.status | downcase }}">
-          <td data-label="ID">{{ s.id }}</td>
-          <td data-label="Title">{{ s.title }}</td>
-          <td data-label="Owner">{{ s.owner }}</td>
-          <td data-label="Access"><a class="view-btn" href="{{ s.url | relative_url }}">View</a></td>
-        </tr>
-        {% endif %}
-        {% endfor %}
-      </tbody>
-    </table>
-    <div id="empty" class="empty" hidden>No specs match this filter.</div>
-  </section>
-</main>
-
+<header class="hero">
+  <h1>Welcome to {{ site.title }}</h1>
+  <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
+  <div class="actions">
+    <a class="btn primary" href="{{ site.baseurl }}/../../issues/new?template=new-spec.yml">Submit a New Design Spec</a>
+    <a class="btn" href="{{ site.baseurl }}/../../issues/new?template=update-spec.yml">Submit an Update</a>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Spec status">
+    <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
+    <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
+    <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
+  </div>
+  <div class="searchbar">
+    <input id="q" type="search" placeholder="Search by title, family, version, id…" aria-label="Search specs">
+  </div>
+</header>
+{% assign all_specs = site.specs | where: "name", "index.md" %}
+<table id="specTable" aria-live="polite">
+  <thead>
+    <tr>
+      <th style="width:70px">ID</th>
+      <th>Title</th>
+      <th style="width:160px">Family</th>
+      <th style="width:90px">Version</th>
+      <th style="width:150px">Created At</th>
+      <th class="col-updated" style="width:150px">Updated At</th>
+      <th style="width:120px">Access</th>
+    </tr>
+  </thead>
+  <tbody id="latestTbody">
+    {% assign families = all_specs | group_by: "family" %}
+    {% for fam in families %}
+      {% assign items_sorted = fam.items | sort_natural: "version" %}
+      {% assign latest = items_sorted | last %}
+      <tr data-status="{{ latest.status | downcase }}">
+        <td data-label="ID">{{ latest.id }}</td>
+        <td data-label="Title">{{ latest.title }}</td>
+        <td data-label="Family">{{ latest.family }}</td>
+        <td data-label="Version">{{ latest.version }}</td>
+        <td data-label="Created At">{{ latest.created_at }}</td>
+        <td class="col-updated" data-label="Updated At"></td>
+        <td data-label="Access"><a class="view-btn" href="{{ latest.url | relative_url }}">View</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+  <tbody id="allTbody" hidden>
+    {% assign all_sorted = all_specs | sort: "family" | sort_natural: "version" %}
+    {% for s in all_sorted %}
+      <tr data-status="{{ s.status | downcase }}">
+        <td data-label="ID">{{ s.id }}</td>
+        <td data-label="Title">{{ s.title }}</td>
+        <td data-label="Family">{{ s.family }}</td>
+        <td data-label="Version">{{ s.version }}</td>
+        <td data-label="Created At">{{ s.created_at }}</td>
+        <td class="col-updated" data-label="Updated At">{{ s.updated_at | default: s.created_at }}</td>
+        <td data-label="Access"><a class="view-btn" href="{{ s.url | relative_url }}">View</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="table-toolbar">
+  <label class="toggle">
+    <input id="showAll" type="checkbox" />
+    <span>Show all versions</span>
+  </label>
+</div>
+<div id="empty" class="empty" hidden>No specs match this filter.</div>
 <script>
-const tabs = document.querySelectorAll('.tab');
-const rows = [...document.querySelectorAll('#rows tr')];
-const q = document.getElementById('q');
-const empty = document.getElementById('empty');
-
-function applyFilters(){
-  const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
-  const term = q.value.trim().toLowerCase();
-  let visible = 0;
-  rows.forEach(r => {
-    const inTab = (r.dataset.status || '') === activeTab;
-    const text = (r.textContent || '').toLowerCase();
-    const match = !term || text.includes(term);
-    const show = inTab && match;
-    r.hidden = !show;
-    if (show) visible++;
+function currentRows(){ return [...document.querySelectorAll('tbody:not([hidden]) tr')]; }
+const tabs=[...document.querySelectorAll('.tab')];
+const q=document.getElementById('q');
+const empty=document.getElementById('empty');
+const showAll=document.getElementById('showAll');
+const latestTbody=document.getElementById('latestTbody');
+const allTbody=document.getElementById('allTbody');
+function setUpdatedColumnVisible(visible){
+  document.querySelectorAll('.col-updated').forEach(el=>{
+    if(visible) el.classList.remove('u-hidden'); else el.classList.add('u-hidden');
   });
-  empty.hidden = visible !== 0;
 }
-tabs.forEach(t => t.addEventListener('click', () => {
-  tabs.forEach(x => x.setAttribute('aria-selected', String(x === t)));
+function updateMode(){
+  const useAll=showAll.checked;
+  latestTbody.hidden=useAll;
+  allTbody.hidden=!useAll;
+  setUpdatedColumnVisible(useAll);
+  applyFilters();
+}
+function applyFilters(){
+  const activeTab=document.querySelector('.tab[aria-selected="true"]').dataset.target;
+  const term=(q.value||'').toLowerCase().trim();
+  let shown=0;
+  currentRows().forEach(r=>{
+    const inTab=(r.dataset.status||'')===activeTab;
+    const matchTerm=!term || (r.textContent||'').toLowerCase().includes(term);
+    const show=inTab && matchTerm;
+    r.hidden=!show; if(show) shown++;
+  });
+  empty.hidden = shown!==0;
+}
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected', String(x===t)));
   applyFilters();
 }));
 q.addEventListener('input', applyFilters);
-applyFilters(); // default Active
+showAll.addEventListener('change', updateMode);
+setUpdatedColumnVisible(false);
+applyFilters();
 </script>
-</body>
-</html>

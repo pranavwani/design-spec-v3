@@ -1,59 +1,68 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{{ page.title }} · {{ site.title }}</title>
-<link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
-</head>
-<body>
-<main class="wrap">
-  <nav class="crumbs"><a href="{{ '/' | relative_url }}">← All specs</a></nav>
-
-  <header class="spec-head">
-    <h1>{{ page.title }}</h1>
+---
+layout: base
+---
+<nav class="topbar">
+  <a class="back" href="{{ '/' | relative_url }}">← Back to all specs</a>
+</nav>
+{% if page.status %}
+  {% assign s = page.status | downcase %}
+  {% if s == "deprecated" %}
+    <div class="callout danger" role="status" aria-live="polite">
+      <h3>Deprecated</h3>
+      <p>This spec is no longer maintained.</p>
+      {% if page.deprecated_at or page.superseded_by or page.deprecation_reason %}
+        <p class="small">
+          {% if page.deprecated_at %}Deprecated on <strong>{{ page.deprecated_at }}</strong>. {% endif %}
+          {% if page.superseded_by %}Superseded by <a href="{{ page.superseded_by | relative_url }}">this spec</a>. {% endif %}
+          {% if page.deprecation_reason %}Reason: {{ page.deprecation_reason }}{% endif %}
+        </p>
+      {% endif %}
+    </div>
+  {% elsif s == "in-progress" %}
+    <div class="callout warn" role="status" aria-live="polite">
+      <h3>Draft</h3>
+      <p>This spec is a work-in-progress. Details may change.</p>
+      {% if page.updated_at %}<p class="small">Last updated: <strong>{{ page.updated_at }}</strong></p>{% endif %}
+    </div>
+  {% endif %}
+{% endif %}
+{% assign root = page.url | replace: '/index.html','/' %}
+<div class="spec-grid">
+  <aside class="sidebar">
+    <h2 class="sidebar-title">{% if page.id %}ID {{ page.id }} · {% endif %}{{ page.title | default: 'Spec' }}</h2>
     <div class="meta">
-      {% if page.id %}<span class="badge">ID {{ page.id }}</span>{% endif %}
       {% if page.status %}<span class="badge status-{{ page.status | downcase }}">{{ page.status }}</span>{% endif %}
       {% if page.owner %}<span class="badge">Owner {{ page.owner }}</span>{% endif %}
+      {% if page.team %}<span class="badge">Team {{ page.team }}</span>{% endif %}
       {% if page.created_at %}<span class="badge">Created {{ page.created_at }}</span>{% endif %}
+      {% if page.updated_at %}<span class="badge">Updated {{ page.updated_at }}</span>{% endif %}
+      {% if page.tags %}{% for t in page.tags %}<span class="badge">{{ t }}</span>{% endfor %}{% endif %}
     </div>
-  </header>
-
-  {% assign base = page.url | replace: '/index.html','/' %}
-
-  {% comment %} Discover sibling pages (hld / lld / api / ux) {% endcomment %}
-  {% assign siblings = "" | split: "" %}
-  {% for p in site.pages %}
-    {% if p.url != page.url and p.url contains base and p.url != '/' %}
-      {% assign siblings = siblings | push: p %}
-    {% endif %}
-  {% endfor %}
-
-  {% if siblings.size > 0 %}
-  <aside class="sibling">
-    <h2>Related docs</h2>
-    <ul>
-      {% assign preferred = "hld, lld, api, ux" | split: ", " %}
-      {% for key in preferred %}
+    {% assign family_root = page.url | split: '/' | slice: 0, 3 | join: '/' %}
+    {% assign siblings = site.specs | where_exp: "d", "d.url contains family_root" | where: "name", "index.md" %}
+    {% if siblings.size > 1 %}
+      <div class="version-switcher">
+        <span>Version:</span>
         {% for s in siblings %}
-          {% if s.url contains '/' | append: key | append: '.html' %}
-            <li><a href="{{ s.url | relative_url }}">{{ s.title }}</a></li>
+          <a class="chip {% if s.url == page.url %}active{% endif %}" href="{{ s.url | relative_url }}">{{ s.version }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <ul class="side-links">
+      <li><a class="{% if page.path contains '/index.md' %}active{% endif %}" href="{{ root | relative_url }}">Overview</a></li>
+      {% assign docs = site.specs | where_exp: "d","d.url contains root" %}
+      {% assign pref = "hld,lld,api,ux" | split: "," %}
+      {% for key in pref %}
+        {% for d in docs %}
+          {% if d.url contains '/' | append: key | append: '.html' %}
+            <li><a class="{% if page.url == d.url %}active{% endif %}" href="{{ d.url | relative_url }}">{{ d.title }}</a></li>
           {% endif %}
         {% endfor %}
       {% endfor %}
-      {% for s in siblings %}
-        {% unless s.url contains 'hld.html' or s.url contains 'lld.html' or s.url contains 'api.html' or s.url contains 'ux.html' %}
-          <li><a href="{{ s.url | relative_url }}">{{ s.title }}</a></li>
-        {% endunless %}
-      {% endfor %}
     </ul>
   </aside>
-  {% endif %}
-
   <article class="content">
+    <h1 class="spec-title">{{ page.title }}</h1>
     {{ content }}
   </article>
-</main>
-</body>
-</html>
+</div>

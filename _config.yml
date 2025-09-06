@@ -1,11 +1,9 @@
-title: VoltMX Design Specs
-description: Design specifications
-url: ""         # set if you have a custom domain
-baseurl: ""     # set to "/<repo>" if publishing from the repo root name
-theme: null
+title: Voltmx Design Specs
+description: Design specifications for Voltmx
 markdown: kramdown
+theme: null
 
 collections:
   specs:
     output: true
-    permalink: /specs/:path/     # /specs/0001-ssc/
+    permalink: /specs/:path/
