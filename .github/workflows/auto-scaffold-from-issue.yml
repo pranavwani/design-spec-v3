@@ -72,8 +72,9 @@ jobs:
         run: |
           set -eux
           mkdir -p "$DIR"
-          # index.md
-          cat > "$DIR/index.md" <<'EOF'
+
+          # index.md (allow expansion)
+          cat > "$DIR/index.md" <<EOF
           ---
           layout: spec
           id: 0
@@ -90,31 +91,31 @@ jobs:
           ---
           ## Summary
           (copy details from the proposal issue #${ISSUE_NUMBER})
-          
+
           ## Goals / Non-goals
           - 
-          
+
           ## Acceptance Criteria
           - 
-          
+
           ## Related Docs
           - [HLD](./hld.md) · [LLD](./lld.md) · [API](./api.md) · [UX](./ux.md)
           EOF
 
-          # sibling docs
-          for f in hld lld api ux; do
-            cat > "$DIR/${f}.md" <<EOF
-            ---
-            layout: spec
-            title: ${TITLE} — $(echo $f | tr a-z A-Z)
-            ---
-            # $(echo $f | tr a-z A-Z)
-            (fill me)
-            EOF
-          done
+              # sibling docs
+              for f in hld lld api ux; do
+                cat > "$DIR/${f}.md" <<EOF
+          ---
+          layout: spec
+          title: ${TITLE} — $(echo "$f" | tr 'a-z' 'A-Z')
+          ---
+          # $(echo "$f" | tr 'a-z' 'A-Z')
+          (fill me)
+          EOF
+              done
 
-          # ensure git sees files
-          git add "$DIR"
+              # ensure git sees files
+              git add "$DIR"
 
       - name: Create draft PR
         id: cpr
