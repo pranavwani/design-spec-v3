@@ -2,7 +2,7 @@ name: Auto scaffold spec from issue
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
 permissions:
   contents: write
