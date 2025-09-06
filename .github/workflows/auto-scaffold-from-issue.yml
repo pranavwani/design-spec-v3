@@ -32,10 +32,12 @@ jobs:
 
            // Match **Label...**\nvalue  (label can have extra text after the prefix)
            function fieldByPrefix(prefix){
-              const re = new RegExp(`\\*\\*${prefix}[^*]*\\*\\*\\s*\\r?\\n([^\\r\\n]+)`, "i");
+              // Match either **Label**\nvalue OR ### Label\nvalue
+              const re = new RegExp(`(?:\\*\\*|###)\\s*${prefix}[^\\n]*\\s*\\r?\\n([^\\r\\n]+)`, "i");
               const m = body.match(re);
               return m ? m[1].trim() : "";
-           }
+            }
+
 
            const titleLine = fieldByPrefix("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
            const family    = fieldByPrefix("Spec family");              // tolerates "(folder key)" etc.
@@ -71,7 +73,7 @@ jobs:
           set -eux
           mkdir -p "$DIR"
           # index.md
-          cat > "$DIR/index.md" <<'EOF'
+          cat > "$DIR/index.md" <<EOF
           ---
           layout: spec
           id: 0
@@ -119,7 +121,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           branch: ${{ env.BRANCH }}
-          title: "[Spec] ${ { env.TITLE } } (scaffold)"
+          title: "[Spec] ${{ env.TITLE }} (scaffold)"
           body: |
             Closes #${{ env.ISSUE_NUMBER }}
 
