@@ -1,0 +1,51 @@
+name: "Update Existing Design Spec"
+description: "Propose an update to an existing spec (bugfix, enhancement, or major revision)"
+title: "[Update] <spec title> v<version>"
+labels: ["spec:update"]
+body:
+  - type: input
+    id: spec_ref
+    attributes:
+      label: "Which spec are you updating?"
+      description: "Enter the family and version (e.g., flutter-sdk v2, or ID #42)."
+      placeholder: "flutter-sdk v2"
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: "Why is this update needed?"
+      description: "Summarize the context or reason for this update."
+      placeholder: "e.g., API methods changed after integration feedback."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: "Scope of changes"
+      description: "List what will be updated (e.g., index.md summary, api.md endpoints)."
+      placeholder: "- index.md summary\n- api.md: add new POST /users endpoint"
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: "Risks or considerations"
+      description: "Any breaking changes, migration work, or dependencies?"
+  - type: checkboxes
+    id: artifacts
+    attributes:
+      label: "Docs affected"
+      options:
+        - label: "index.md (main spec)"
+        - label: "hld.md"
+        - label: "lld.md"
+        - label: "api.md"
+        - label: "ux.md"
+  - type: input
+    id: owner
+    attributes:
+      label: "Update owner (GitHub handle)"
+      placeholder: "@your-handle"
+    validations:
+      required: true

@@ -1,0 +1,96 @@
+name: Validate Specs
+on:
+  pull_request:
+    paths:
+      - "_specs/**"
+      - ".github/workflows/validate-specs.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install pyyaml
+      - name: Validate front-matter & structure
+        run: |
+          python - << 'PY'
+          import re, sys, glob, yaml, datetime
+          REQUIRED = ["id","title","status","owner","team","created_at","family","version"]
+          STATUS = {"active","in-progress","deprecated"}
+          DATE_KEYS = ["created_at","updated_at","deprecated_at"]
+          errors=[]
+          ids=[]
+          families={}
+
+          def parse_front_matter(path):
+            with open(path, 'r', encoding='utf-8') as f:
+              s=f.read()
+            m=re.match(r'^---\n(.*?)\n---\n', s, flags=re.S)
+            if not m:
+              raise ValueError(f"{path}: missing or malformed front-matter block")
+            return yaml.safe_load(m.group(1)) or {}
+
+          for idx_path in glob.glob("_specs/**/index.md", recursive=True):
+            try:
+              fm=parse_front_matter(idx_path)
+            except Exception as e:
+              errors.append(str(e)); continue
+
+            for k in REQUIRED:
+              if k not in fm or fm[k] in ("",None,[]):
+                errors.append(f"{idx_path}: missing required field '{k}'")
+
+            if "id" in fm and not isinstance(fm["id"], int):
+              errors.append(f"{idx_path}: 'id' must be an integer")
+
+            if "status" in fm and str(fm["status"]).lower() not in STATUS:
+              errors.append(f"{idx_path}: 'status' must be one of {sorted(STATUS)}")
+
+            for dk in DATE_KEYS:
+              if dk in fm and fm[dk]:
+                try:
+                  datetime.date.fromisoformat(str(fm[dk]))
+                except Exception:
+                  errors.append(f"{idx_path}: '{dk}' must be YYYY-MM-DD")
+
+            if "version" in fm and not re.match(r"^v\d+$", str(fm["version"])):
+              errors.append(f"{idx_path}: 'version' must match vN")
+
+            if "owner" in fm and not str(fm["owner"]).startswith("@"):
+              errors.append(f"{idx_path}: 'owner' should be a GitHub handle like '@user'")
+
+            fam=fm.get("family")
+            families.setdefault(fam, []).append((fm, idx_path))
+
+            if str(fm.get("status","")).lower()=="deprecated":
+              if not fm.get("deprecated_at"):
+                errors.append(f"{idx_path}: deprecated spec must set 'deprecated_at'")
+              if not fm.get("deprecation_reason"):
+                errors.append(f"{idx_path}: deprecated spec should include 'deprecation_reason'")
+
+          from collections import Counter
+          c=Counter([i for i,_ in ids])
+          dups=[i for i,n in c.items() if n>1]
+          for i in dups:
+            paths=[p for (id_,p) in ids if id_==i]
+            errors.append(f"Duplicate spec id {i} in: {', '.join(paths)}")
+
+          for fam, items in families.items():
+            actives=[p for (fm,p) in items if str(fm.get('status','')).lower()=='active']
+            if len(actives)>1:
+              errors.append(f"Family '{fam}' has multiple active versions: {', '.join(actives)}")
+
+          if errors:
+            print("::group::Spec validation errors")
+            for e in errors:
+              print(f"::error::{e}")
+            print("::endgroup::")
+            sys.exit(1)
+          else:
+            print("All specs look good ✅")
+          PY
