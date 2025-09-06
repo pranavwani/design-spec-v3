@@ -25,7 +25,7 @@ title: Home
     <input id="q" type="search" placeholder="Search by title, family, version, id…" aria-label="Search specs">
   </div>
 </header>
-{% assign all_specs = site.specs | where: "basename", "index" %}
+{% assign all_specs = site.specs %}
 <table id="specTable" aria-live="polite">
   <thead>
     <tr>
