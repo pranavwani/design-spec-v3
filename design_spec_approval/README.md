@@ -65,23 +65,23 @@ mockups/     (UI images)
 ![#homepage](mockups/homepage.png)
 **2. New Spec Proposal Form**
 ![#new_spec_proposal](mockups/new_spec_proposal.png)
-3. Proposal Issue
+**3. Proposal Issue**
 ![#proposal_issue](mockups/proposal_issue.png)
-4. Draft PR
+**4. Draft PR**
 ![draft_pr](mockups/draft_pr.png)
-5. Spec Detail Page
+**5. Spec Detail Page**
 ![spec_detail_page](mockups/spec_detail_page.png)
-6. Deprecated Spec Page
+**6. Deprecated Spec Page**
 ![deprecated_spec_page](mockups/deprecated_spec_page.png)
-7. Update Proposal Form
+**7. Update Proposal Form**
 ![update_proposal_form](mockups/update_proposal_form.png)
-8. Update Proposal Issue
+**8. Update Proposal Issue**
 ![update_proposal_issue](mockups/update_proposal_issue.png)
-9. Update PR
+**9. Update PR**
 ![update_pr](mockups/update_pr.png)
-10. Updated Spec Page (with changelog)
+**10. Updated Spec Page (with changelog)**
 ![update_spec_page](mockups/update_spec_page.png)
-11. Homepage with “Show all versions” toggle
+**11. Homepage with “Show all versions” toggle**
 ![show_all_versions](mockups/show_all_versions.png)
 
 ---
