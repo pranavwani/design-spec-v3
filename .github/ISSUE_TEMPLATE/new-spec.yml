@@ -1,0 +1,37 @@
+name: "New Design Spec Proposal"
+description: "Request to start a new design spec"
+title: "[Spec] <short title>"
+labels: ["spec:proposal"]
+body:
+  - type: input
+    id: title
+    attributes: { label: "Spec title", placeholder: "Flutter SDK" }
+    validations: { required: true }
+  - type: dropdown
+    id: category
+    attributes:
+      label: "Category"
+      options: ["Product", "Platform", "Service", "Library", "Mobile", "Other"]
+  - type: textarea
+    id: summary
+    attributes: { label: "1-2 paragraph summary", description: "What/Why/Goals" }
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes: { label: "Scope", description: "In / Out" }
+  - type: textarea
+    id: risks
+    attributes: { label: "Risks & assumptions" }
+  - type: checkboxes
+    id: needs
+    attributes:
+      label: "Artifacts to include"
+      options:
+        - label: "HLD"
+        - label: "LLD"
+        - label: "API Spec"
+        - label: "UX"
+  - type: input
+    id: owner
+    attributes: { label: "Spec owner (GitHub handle)" }
+    validations: { required: true }

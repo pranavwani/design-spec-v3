@@ -1,0 +1,12 @@
+title: Veltmix Design Specs
+description: Design specifications
+markdown: kramdown
+theme: null
+
+collections:
+  specs:
+    output: true
+    permalink: /specs/:path/   # /specs/0001-ssc/
+
+# If publishing from /docs or a repo named veltmix-specs:
+# baseurl: "/veltmix-specs"

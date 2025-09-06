@@ -1,0 +1,63 @@
+---
+layout: base
+---
+
+<nav class="topbar">
+  <a class="back" href="{{ '/' | relative_url }}">← Back to all specs</a>
+</nav>
+
+{% comment %}
+Figure out the current spec folder "root", e.g. /specs/0001-ssc/
+{% endcomment %}
+{% assign root = page.url | replace: '/index.html','/' %}
+{% unless root contains '/specs/' %}
+  {% assign root = root %}
+{% endunless %}
+
+<div class="spec-grid">
+  <aside class="sidebar">
+    <h2 class="sidebar-title">
+      {% if page.id %}ID {{ page.id }} · {% endif %}{{ page.title | default: 'Spec' }}
+    </h2>
+    <div class="meta">
+      {% if page.status %}<span class="badge status-{{ page.status | downcase }}">{{ page.status }}</span>{% endif %}
+      {% if page.owner %}<span class="badge">Owner {{ page.owner }}</span>{% endif %}
+      {% if page.created_at %}<span class="badge">Created {{ page.created_at }}</span>{% endif %}
+    </div>
+
+    <ul class="side-links">
+      {% comment %}
+      Collect all documents in this spec folder (including index.md and siblings)
+      {% endcomment %}
+      {% assign docs = "" | split: "" %}
+      {% for d in site.specs %}
+        {% if d.url != page.url and d.url contains root %}
+          {% assign docs = docs | push: d %}
+        {% endif %}
+      {% endfor %}
+
+      <li><a class="{% if page.path contains '/index.md' %}active{% endif %}" href="{{ root | relative_url }}">Main</a></li>
+
+      {% assign preferred = "hld,lld,api,ux" | split: "," %}
+      {% for key in preferred %}
+        {% for d in docs %}
+          {% if d.url contains '/' | append: key | append: '.html' %}
+            <li><a class="{% if page.url == d.url %}active{% endif %}" href="{{ d.url | relative_url }}">{{ d.title }}</a></li>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+
+      {% comment %} Any other pages in the folder {% endcomment %}
+      {% for d in docs %}
+        {% unless d.url contains 'hld.html' or d.url contains 'lld.html' or d.url contains 'api.html' or d.url contains 'ux.html' %}
+          <li><a class="{% if page.url == d.url %}active{% endif %}" href="{{ d.url | relative_url }}">{{ d.title }}</a></li>
+        {% endunless %}
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <article class="content">
+    <h1 class="spec-title">{{ page.title }}</h1>
+    {{ content }}
+  </article>
+</div>
