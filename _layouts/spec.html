@@ -9,147 +9,129 @@ layout: base
   <h1 class="spec-heading">{{ page.title }}</h1>
   <div class="spec-header-right">
     {%- if page.status -%}
-      <span class="pill pill--{{ page.status | downcase }}">{{ page.status | capitalize }}</span>
+    <span class="pill pill--{{ page.status | downcase }}">{{ page.status | capitalize }}</span>
     {%- endif -%}
     {%- if page.updated_at -%}
-      <span class="pill pill--muted">Updated {{ page.updated_at }}</span>
+    <span class="pill pill--muted">Updated {{ page.updated_at }}</span>
     {%- endif -%}
     {%- if page.owner -%}
-      <span class="pill">Owner {{ page.owner }}</span>
+    <span class="pill">Owner {{ page.owner }}</span>
     {%- endif -%}
     {%- if page.team -%}
-      <span class="pill">Team {{ page.team }}</span>
+    <span class="pill">Team {{ page.team }}</span>
     {%- endif -%}
     {%- if page.created_at -%}
-      <span class="pill">Created {{ page.created_at }}</span>
+    <span class="pill">Created {{ page.created_at }}</span>
     {%- endif -%}
   </div>
 </header>
 
 {%- comment -%}
-  Compute the “space” directory (…/specs/<name>/<version>/)
-  Example: specs/flutter-sdk/v2/index.md  →  specs/flutter-sdk/v2/
-{%- endcomment -%}
-{%- assign parts = page.path | split:'/' -%}
-{%- assign space_dir = parts | slice: 0, parts.size | join:'/' -%}
-{%- assign space_dir = space_dir | replace: '/index.md','/' -%}
-{%- assign space_docs = site.specs | where_exp:'d', "d.path contains space_dir" -%}
+Compute the “space” directory (…/specs/<name>/<version>/)
+    Example: specs/flutter-sdk/v2/index.md → specs/flutter-sdk/v2/
+    {%- endcomment -%}
+    {%- assign parts = page.path | split:'/' -%}
+    {%- assign space_dir = parts | slice: 0, parts.size | join:'/' -%}
+    {%- assign space_dir = space_dir | replace: '/index.md','/' -%}
+    {%- assign space_docs = site.specs | where_exp:'d', "d.path contains space_dir" -%}
 
-{%- comment -%}
-  Keep only top-level files in the space (index.md and first-level pages).
-  Also allow per-page front-matter:
+    {%- comment -%}
+    Keep only top-level files in the space (index.md and first-level pages).
+    Also allow per-page front-matter:
     nav_order: 10
     nav_title: "High-Level Design"
-{%- endcomment -%}
-{%- assign nav_items = "" | split: "" -%}
-{%- for d in space_docs -%}
-  {%- assign depth = d.path | remove_first: space_dir | split:'/' | size -%}
-  {%- if depth <= 1 -%}
-    {%- assign nav_items = nav_items | push: d -%}
-  {%- endif -%}
-{%- endfor -%}
-{%- assign nav_items = nav_items | sort: 'nav_order' -%}
+    {%- endcomment -%}
+    {%- assign nav_items = "" | split: "" -%}
+    {%- for d in space_docs -%}
+    {%- assign depth = d.path | remove_first: space_dir | split:'/' | size -%}
+    {%- if depth <= 1 -%} {%- assign nav_items=nav_items | push: d -%} {%- endif -%} {%- endfor -%} {%- assign
+      nav_items=nav_items | sort: 'nav_order' -%} <div class="spec-grid">
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <ul class="side-links">
+            {%- for d in nav_items -%}
+            {%- assign href = d.url | replace: '/index.html','/' -%}
+            <li>
+              <a class="{% if page.url == d.url %}active{% endif %}" href="{{ href | relative_url }}">
+                {{ d.nav_title | default: d.title | default: 'Untitled' }}
+              </a>
+            </li>
+            {%- endfor -%}
+          </ul>
+        </nav>
+      </aside>
 
-<div class="spec-grid">
-  <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <ul>
-        {%- for d in nav_items -%}
-          {%- assign href = d.url | replace: '/index.html','/' -%}
-          <li>
-            <a class="{% if page.url == d.url %}active{% endif %}"
-               href="{{ href | relative_url }}">
-               {{ d.nav_title | default: d.title | default: 'Untitled' }}
-            </a>
-          </li>
-        {%- endfor -%}
-      </ul>
-    </nav>
-  </aside>
+      <main id="spec-content" class="content">
+        <article class="content-card">
+          {{ content }}
+        </article>
+      </main>
+      </div>
 
-  <main id="spec-content" class="content">
-    <article class="content-card">
-      {{ content }}
-    </article>
-  </main>
-</div>
+      <script>
+        /* PJAX-lite: swap only #spec-content on sidebar clicks */
+        (function () {
+          const containerSel = '#spec-content';
+          const navSel = '.sidebar-nav a';
 
-<script>
-/* PJAX-lite: swap only #spec-content on sidebar clicks */
-(function () {
-  const containerSel = '#spec-content';
-  const navSel = '.side-links a';
+          // Helper: only handle same-origin, same-site links
+          function sameOrigin(href) {
+            try { return new URL(href, location.href).origin === location.origin; }
+            catch { return false; }
+          }
 
-  // Helper: only handle same-origin, same-site links
-  function sameOrigin(href) {
-    try { return new URL(href, location.href).origin === location.origin; }
-    catch { return false; }
-  }
+          // Mark the active link in the leftbar
+          function setActive(hrefAbs) {
+            document.querySelectorAll(navSel).forEach(a => {
+              a.classList.toggle('active', a.href === hrefAbs);
+            });
+          }
 
-  // Mark the active link in the leftbar
-  function setActive(hrefAbs) {
-    document.querySelectorAll(navSel).forEach(a => {
-      a.classList.toggle('active', a.href === hrefAbs);
-    });
-  }
+          // Swap right content
+          async function load(url, { push = true, scroll = true } = {}) {
+            const abs = new URL(url, location.href).href;
+            const res = await fetch(abs, { headers: { 'X-PJAX': '1' } });
+            if (!res.ok) throw new Error('Fetch failed: ' + abs);
 
-  // Swap right content
-  async function load(url, { push=true, scroll=true } = {}) {
-    const res = await fetch(url, { headers: { 'X-PJAX': '1' }});
-    if (!res.ok) throw new Error('Fetch failed: ' + url);
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const next = doc.querySelector(containerSel);
+            const curr = document.querySelector(containerSel);
+            if (!next || !curr) return location.assign(abs);
 
-    const html = await res.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const next = doc.querySelector(containerSel);
-    const curr = document.querySelector(containerSel);
+            curr.style.opacity = '0.35';
+            curr.replaceWith(next);
+            next.style.opacity = '1'; // reset
 
-    if (!next || !curr) {
-      // Fallback if layout not found
-      location.assign(url);
-      return;
-    }
+            if (doc.title) document.title = doc.title;
+            setActive(abs);
+            if (scroll) next.scrollIntoView({ block: 'start' });
+            if (push) history.pushState({ pjax: true, url: abs }, '', abs);
+          }
 
-    // Optional: tiny fade
-    curr.style.opacity = '0.35';
 
-    // Replace the right pane
-    curr.replaceWith(next);
+          // Intercept clicks in the leftbar
+          document.addEventListener('click', (e) => {
+            const a = e.target.closest(navSel);
+            if (!a) return;
 
-    // Update document title (use the fetched page's title)
-    if (doc.title) document.title = doc.title;
+            // Respect modifier keys / new-tab, hashes, external, downloads
+            if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            const href = a.getAttribute('href');
+            if (!href || href.startsWith('#') || !sameOrigin(href)) return;
 
-    // Active link
-    setActive(new URL(url, location.href).href);
+            e.preventDefault();
+            load(href).catch(() => location.assign(href));
+          });
 
-    // Scroll to top of right pane
-    if (scroll) next.scrollIntoView({ block: 'start' });
+          // Back/forward navigation
+          window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.pjax && e.state.url) {
+              load(e.state.url, { push: false }).catch(() => location.reload());
+            }
+          });
 
-    // History API
-    if (push) history.pushState({ pjax: true, url }, '', url);
-  }
-
-  // Intercept clicks in the leftbar
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest(navSel);
-    if (!a) return;
-
-    // Respect modifier keys / new-tab, hashes, external, downloads
-    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    const href = a.getAttribute('href');
-    if (!href || href.startsWith('#') || !sameOrigin(href)) return;
-
-    e.preventDefault();
-    load(href).catch(() => location.assign(href));
-  });
-
-  // Back/forward navigation
-  window.addEventListener('popstate', (e) => {
-    if (e.state && e.state.pjax && e.state.url) {
-      load(e.state.url, { push: false }).catch(() => location.reload());
-    }
-  });
-
-  // Mark active on initial load
-  setActive(location.href);
-})();
-</script>
+          // Mark active on initial load
+          setActive(location.href);
+        })();
+      </script>
