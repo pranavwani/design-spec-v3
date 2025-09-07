@@ -21,7 +21,18 @@ Example path: _specs/flutter-sdk/v2/index.md → url root: /specs/flutter-sdk/v2
     <span class="pill pill--muted">Updated {{ meta.updated_at }}</span>
     {%- endif -%}
     {%- if meta.owner -%}
-    <span class="pill">Owner {{ meta.owner }}</span>
+      {%- assign _owner = meta.owner | strip -%}
+      {%- if _owner | slice: 0, 1 == '@' -%}
+        {%- assign _handle = _owner | remove: '@' -%}
+        <a class="pill pill--muted"
+          href="https://github.com/{{ _handle | uri_escape }}"
+          target="_blank" rel="noopener"
+          title="Open {{ _owner }} on GitHub">
+          Owner {{ _owner }}
+        </a>
+      {%- else -%}
+        <span class="pill">Owner {{ _owner }}</span>
+      {%- endif -%}
     {%- endif -%}
     {%- if meta.team -%}
     <span class="pill">Team {{ meta.team }}</span>
