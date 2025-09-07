@@ -4,63 +4,82 @@ layout: base
 <nav class="topbar">
   <a class="back" href="{{ '/' | relative_url }}">← Back to all specs</a>
 </nav>
-{% if page.status %}
-  {% assign s = page.status | downcase %}
-  {% if s == "deprecated" %}
+
+{%- if page.status -%}
+  {%- assign s = page.status | downcase -%}
+  {%- if s == "deprecated" -%}
     <div class="callout danger" role="status" aria-live="polite">
       <h3>Deprecated</h3>
       <p>This spec is no longer maintained.</p>
-      {% if page.deprecated_at or page.superseded_by or page.deprecation_reason %}
+      {%- if page.deprecated_at or page.superseded_by or page.deprecation_reason -%}
         <p class="small">
-          {% if page.deprecated_at %}Deprecated on <strong>{{ page.deprecated_at }}</strong>. {% endif %}
-          {% if page.superseded_by %}Superseded by <a href="{{ page.superseded_by | relative_url }}">this spec</a>. {% endif %}
-          {% if page.deprecation_reason %}Reason: {{ page.deprecation_reason }}{% endif %}
+          {%- if page.deprecated_at -%}Deprecated on <strong>{{ page.deprecated_at }}</strong>. {%- endif -%}
+          {%- if page.superseded_by -%}Superseded by <a href="{{ page.superseded_by | relative_url }}">this spec</a>. {%- endif -%}
+          {%- if page.deprecation_reason -%}Reason: {{ page.deprecation_reason }}{%- endif -%}
         </p>
-      {% endif %}
+      {%- endif -%}
     </div>
-  {% elsif s == "in-progress" %}
+  {%- elsif s == "in-progress" -%}
     <div class="callout warn" role="status" aria-live="polite">
       <h3>Draft</h3>
       <p>This spec is a work-in-progress. Details may change.</p>
-      {% if page.updated_at %}<p class="small">Last updated: <strong>{{ page.updated_at }}</strong></p>{% endif %}
+      {%- if page.updated_at -%}<p class="small">Last updated: <strong>{{ page.updated_at }}</strong></p>{%- endif -%}
     </div>
-  {% endif %}
-{% endif %}
-{% assign root = page.url | replace: '/index.html','/' %}
+  {%- endif -%}
+{%- endif -%}
+
+{%- assign root = page.url | replace: '/index.html','/' -%}
+
 <div class="spec-grid">
   <aside class="sidebar">
-    <h2 class="sidebar-title">{% if page.id %}ID {{ page.id }} · {% endif %}{{ page.title | default: 'Spec' }}</h2>
+    <h2 class="sidebar-title">{{ page.title | default: 'Spec' }}</h2>
+
     <div class="meta">
-      {% if page.status %}<span class="badge status-{{ page.status | downcase }}">{{ page.status }}</span>{% endif %}
-      {% if page.owner %}<span class="badge">Owner {{ page.owner }}</span>{% endif %}
-      {% if page.team %}<span class="badge">Team {{ page.team }}</span>{% endif %}
-      {% if page.created_at %}<span class="badge">Created {{ page.created_at }}</span>{% endif %}
-      {% if page.updated_at %}<span class="badge">Updated {{ page.updated_at }}</span>{% endif %}
-      {% if page.tags %}{% for t in page.tags %}<span class="badge">{{ t }}</span>{% endfor %}{% endif %}
+      {%- if page.status -%}<span class="badge status-{{ page.status | downcase }}">{{ page.status | capitalize }}</span>{%- endif -%}
+      {%- if page.updated_at -%}<span class="badge">Updated {{ page.updated_at }}</span>{%- endif -%}
+      {%- if page.owner -%}<span class="badge">Owner {{ page.owner }}</span>{%- endif -%}
+      {%- if page.team -%}<span class="badge">Team {{ page.team }}</span>{%- endif -%}
+      {%- if page.created_at -%}<span class="badge">Created {{ page.created_at }}</span>{%- endif -%}
+      {%- if page.tags -%}{% for t in page.tags %}<span class="badge">{{ t }}</span>{% endfor %}{%- endif -%}
     </div>
-    {% assign family_root = page.url | split: '/' | slice: 0, 3 | join: '/' %}
-    {% assign siblings = site.specs | where_exp: "d", "d.url contains family_root" | where: "name", "index.md" %}
-    {% if siblings.size > 1 %}
+
+    {%- assign family_root = page.url | split: '/' | slice: 0, 3 | join: '/' -%}
+    {%- assign siblings = site.specs | where_exp: "d", "d.url contains family_root" | where: "name", "index.md" -%}
+    {%- if siblings.size > 1 -%}
       <div class="version-switcher">
         <span>Version:</span>
-        {% for s in siblings %}
+        {%- for s in siblings -%}
           <a class="chip {% if s.url == page.url %}active{% endif %}" href="{{ s.url | relative_url }}">{{ s.version }}</a>
-        {% endfor %}
+        {%- endfor -%}
       </div>
-    {% endif %}
+    {%- endif -%}
+
+    {%- comment -%}
+      Sidebar: fixed, predictable order with correct labels.
+      We match *exactly* one doc per key to avoid duplicates.
+    {%- endcomment -%}
     <ul class="side-links">
-      <li><a class="{% if page.path contains '/index.md' %}active{% endif %}" href="{{ root | relative_url }}">Overview</a></li>
-      {% assign docs = site.specs | where_exp: "d","d.url contains root" %}
-      {% assign pref = "hld,lld,api,ux" | split: "," %}
-      {% for key in pref %}
-        {% for d in docs %}
-          {% if d.url contains '/' | append: key | append: '.html' %}
-            <li><a class="{% if page.url == d.url %}active{% endif %}" href="{{ d.url | relative_url }}">{{ d.title }}</a></li>
-          {% endif %}
-        {% endfor %}
-      {% endfor %}
+      <li>
+        <a class="{% if page.path contains '/index.md' %}active{% endif %}" href="{{ root | relative_url }}">Overview</a>
+      </li>
+
+      {%- assign docs = site.specs | where_exp: "d", "d.url contains root" -%}
+      {%- assign pairs = "hld:High-Level Design|lld:Low-Level Design|api:API|ux:UX" | split: "|" -%}
+
+      {%- for pair in pairs -%}
+        {%- assign key = pair | split: ":" | first -%}
+        {%- assign label = pair | split: ":" | last -%}
+        {%- assign target = root | append: key | append: ".html" -%}
+        {%- assign doc = docs | where: "url", target | first -%}
+        {%- if doc -%}
+          <li>
+            <a class="{% if page.url == doc.url %}active{% endif %}" href="{{ doc.url | relative_url }}">{{ label }}</a>
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
     </ul>
   </aside>
+
   <article class="content">
     <h1 class="spec-title">{{ page.title }}</h1>
     {{ content }}
