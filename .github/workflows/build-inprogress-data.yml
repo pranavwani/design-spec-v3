@@ -3,6 +3,7 @@ name: Build In-Progress Spec Index
 on:
   schedule:
     - cron: "*/30 * * * *"   # every 30 minutes
+  workflow_dispatch:          # allow manual “Run workflow”  
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled, closed]
     paths:
@@ -16,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}  # e.g. 'main'
+
 
       - name: Collect open PRs and write _data/in_progress.json
         id: build
@@ -101,8 +105,12 @@ jobs:
           set -e
           git config user.name  "spec-bot"
           git config user.email "spec-bot@users.noreply.github.com"
-          if ! git diff --quiet -- _data/in_progress.json; then
-            git add _data/in_progress.json
+
+          # Stage the file first so diff sees new files too
+          git add -A _data/in_progress.json
+
+          # Commit if staged changes exist; otherwise no-op
+          if ! git diff --cached --quiet -- _data/in_progress.json; then
             git commit -m "chore(spec): refresh in-progress index (count=${{ steps.build.outputs.count }})"
             git push
           else
