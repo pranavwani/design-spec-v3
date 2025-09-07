@@ -54,3 +54,82 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   td{display:flex;justify-content:space-between;border:0}
   td::before{content:attr(data-label);font-weight:600;margin-right:12px;color:var(--sub)}
 }
+
+/* --- Spec page header --- */
+.spec-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 5;
+}
+.spec-heading { margin: 0; font-size: 28px; font-weight: 800; }
+.spec-header .back { text-decoration: none; border: 0; padding: 0; }
+.pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #eef1f4;
+}
+.pill--in-progress, .pill--draft { background: #fff4cc; }
+
+.spec-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  padding-top: 12px;
+}
+
+/* Sidebar = left column with vertical separator */
+.sidebar {
+  border: 0;                 /* remove card look */
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0 16px 0 0;       /* space to the separator */
+  background: transparent;
+  position: sticky;
+  top: 64px;                 /* sits below .spec-header */
+  max-height: calc(100dvh - 80px);
+  overflow: auto;
+}
+.sidebar-title { display: none; } /* mockup hides big title in leftbar */
+
+.side-links { margin: 0; padding: 0; list-style: none; }
+.side-links li { margin: 4px 0; }
+.side-links a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.side-links a.active,
+.side-links a:hover { background: var(--muted); }
+
+/* small meta chips can stay in header or be hidden in sidebar */
+.meta { display: none; } /* optional: hide to match mockup leftbar */
+
+/* Content card on the right */
+.content .content-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+.content .content-card h2 {
+  margin-top: 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.spec-title { display: none; } /* we show title in the header instead */
+
+@media (max-width:800px) {
+  .spec-grid { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; padding-right: 0; position: static; max-height: none; }
+}
