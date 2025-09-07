@@ -110,13 +110,13 @@ jobs:
               [ "$cur_status" = "in-progress" ] && new_status="active"
             fi
 
-            yq -y \
+            yq eval \
               --arg today "$TODAY" \
               --arg status "$new_status" \
               --arg text "$CHANGE_TEXT" \
               '.updated_at = $today
-               | .status = $status
-               | .changelog = [{"date": $today, "text": $text}] + (.changelog // [])' \
+              | .status = $status
+              | .changelog = [{"date": $today, "text": $text}] + (.changelog // [])' \
               /tmp/fm.yml > /tmp/fm.new.yml
 
             { echo '---'; cat /tmp/fm.new.yml; echo '---'; cat /tmp/body.md; } > "$f"
