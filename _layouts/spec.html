@@ -11,6 +11,18 @@ layout: base
     {%- if page.status -%}
       <span class="pill pill--{{ page.status | downcase }}">{{ page.status | capitalize }}</span>
     {%- endif -%}
+    {%- if page.updated_at -%}
+      <span class="pill pill--muted">Updated {{ page.updated_at }}</span>
+    {%- endif -%}
+    {%- if page.owner -%}
+      <span class="pill">Owner {{ page.owner }}</span>
+    {%- endif -%}
+    {%- if page.team -%}
+      <span class="pill">Team {{ page.team }}</span>
+    {%- endif -%}
+    {%- if page.created_at -%}
+      <span class="pill">Created {{ page.created_at }}</span>
+    {%- endif -%}
   </div>
 </header>
 

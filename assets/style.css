@@ -56,20 +56,34 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 }
 
 /* --- Spec page header --- */
+/* --- Modern header with full meta --- */
 .spec-header {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 16px;
-  padding: 12px 0 14px;
+  padding: 16px 8px 12px;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   background: #fff;
   z-index: 5;
 }
-.spec-heading { margin: 0; font-size: 28px; font-weight: 800; }
-.spec-header .back { text-decoration: none; border: 0; padding: 0; }
+
+.spec-heading {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.spec-header-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Pills */
 .pill {
   display: inline-block;
   padding: 4px 10px;
@@ -77,7 +91,15 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   font-size: 12px;
   background: #eef1f4;
 }
-.pill--in-progress, .pill--draft { background: #fff4cc; }
+
+.pill--draft,
+.pill--in-progress {
+  background: #fff4cc;
+}
+
+.pill--muted {
+  background: #eef1f4;
+}
 
 .spec-grid {
   display: grid;
