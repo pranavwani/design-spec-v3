@@ -3,7 +3,7 @@ name: Auto scaffold spec from issue
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
 permissions:
   contents: write
@@ -98,7 +98,7 @@ jobs:
           echo "ISSUE_NUMBER=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
           echo "TODAY=$(date +%F)" >> $GITHUB_ENV
 
-          # Multiline env (Summary/Scope/Risks/Links)
+          # Multiline envs
           {
             echo 'SUMMARY<<EOF'
             echo "${{ steps.fields.outputs.summary }}"
@@ -114,14 +114,16 @@ jobs:
             echo 'EOF'
           } >> $GITHUB_ENV
 
-          # JSON array string of checkbox labels
-          echo "ARTIFACTS=${{ steps.fields.outputs.artifacts }}" >> $GITHUB_ENV
+          # JSON array of checked options (use heredoc to preserve quotes/spaces)
+          {
+            echo 'ARTIFACTS_JSON<<EOF'
+            echo '${{ steps.fields.outputs.artifacts }}'
+            echo 'EOF'
+          } >> $GITHUB_ENV
 
-          # Safe path/branch
-          SAFE_FAMILY=$(echo "${{ steps.fields.outputs.family }}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
-          SAFE_VERSION=$(echo "${{ steps.fields.outputs.version }}" | tr -cd 'a-zA-Z0-9-')
-          echo "BRANCH=spec/${SAFE_FAMILY}-${SAFE_VERSION}" >> $GITHUB_ENV
-          echo "DIR=_specs/${SAFE_FAMILY}/${SAFE_VERSION}" >> $GITHUB_ENV
+      - name: Derive human-readable artifacts list (optional)
+        run: |
+          echo "ARTIFACTS_LIST=$(echo "$ARTIFACTS_JSON" | jq -r 'if type=="array" and length>0 then join(", ") else "-" end')" >> $GITHUB_ENV
 
       - name: Compute next spec id
         run: |
@@ -130,21 +132,28 @@ jobs:
           echo "NEXT_ID=$NEXT" >> $GITHUB_ENV
           echo "Next ID = $NEXT"
 
+      - name: Verify jq is available (optional)
+        run: jq --version
+
       - name: Scaffold spec folder
         run: |
           set -eux
 
           mkdir -p "$DIR/assets/diagrams" "$DIR/assets/images" "$DIR/assets/attachments"
 
-          # Resolve which pages were checked
+          # Resolve which pages were checked (from $ARTIFACTS_JSON JSON array)
           HLD=false; LLD=false; API=false; UX=false; DM=false; ROPS=false; QA=false
-          echo "$ARTIFACTS" | grep -qi 'HLD'            && HLD=true
-          echo "$ARTIFACTS" | grep -qi 'LLD'            && LLD=true
-          echo "$ARTIFACTS" | grep -qi 'API Spec\|API'  && API=true
-          echo "$ARTIFACTS" | grep -qi 'UX'             && UX=true
-          echo "$ARTIFACTS" | grep -qi 'Data Model'     && DM=true
-          echo "$ARTIFACTS" | grep -qi 'Rollout & Ops'  && ROPS=true
-          echo "$ARTIFACTS" | grep -qi 'QA / Test Plan' && QA=true
+
+          has () { echo "$ARTIFACTS_JSON" | jq -e --arg x "$1" 'type=="array" and any(.[]?; . == $x)' >/dev/null 2>&1; }
+
+          has 'HLD'            && HLD=true
+          has 'LLD'            && LLD=true
+          has 'API Spec'       && API=true   # accept either label
+          has 'API'            && API=true
+          has 'UX'             && UX=true
+          has 'Data Model'     && DM=true
+          has 'Rollout & Ops'  && ROPS=true
+          has 'QA / Test Plan' && QA=true
 
           # Write index.md (front-matter first)
           cat > "$DIR/index.md" <<'EOF'
