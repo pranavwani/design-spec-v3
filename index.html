@@ -68,6 +68,22 @@ title: Home
     </tr>
     {% endfor %}
   </tbody>
+  <tbody id="prsTbody">
+    {%- assign prs = site.data.in_progress | default: [] -%}
+    {%- for r in prs -%}
+    <tr data-status="in-progress">
+      <td data-label="ID">PR-{{ r.pr }}</td>
+      <td data-label="Title">{{ r.title }}</td>
+      <td data-label="Family"><code>{{ r.family }}</code></td>
+      <td data-label="Version"><code>{{ r.version }}</code></td>
+      <td data-label="Created At">{{ r.updated_at | date: "%Y-%m-%d" }}</td>
+      <td class="col-updated" data-label="Updated At">{{ r.updated_at | date: "%Y-%m-%d" }}</td>
+      <td data-label="Access">
+        <a class="view-btn" href="{{ r.pr_url }}">PR #{{ r.pr }}</a>
+      </td>
+    </tr>
+    {%- endfor -%}
+  </tbody>
 </table>
 <div class="table-toolbar">
   <label class="toggle">
