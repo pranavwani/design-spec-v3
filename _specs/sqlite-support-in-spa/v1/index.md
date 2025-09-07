@@ -4,13 +4,15 @@ id: 4
 family: sqlite-support-in-spa
 version: v1
 title: sqlite support in spa
-status: in-progress
+status: active
 owner: "@pranavwani"
 team: ""
 created_at: 2025-09-07
-updated_at: 2025-09-07
+updated_at: "2025-09-07"
 tags: []
 changelog:
+  - date: "2025-09-07"
+    text: 'Merged PR #21: [Spec] sqlite support in spa (scaffold)'
   - date: 2025-09-07
     text: "Initial scaffold from issue #20"
 nav_title: "Overview"
