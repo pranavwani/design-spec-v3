@@ -1,0 +1,41 @@
+[
+  {
+    "pr": 27,
+    "pr_title": "[Spec] Scalable Websocket Server (scaffold)",
+    "pr_url": "https://github.com/pranavwani/design-spec-v1/pull/27",
+    "updated_at": "2025-09-07T12:33:55Z",
+    "author": "github-actions[bot]",
+    "dir": "_specs/scalable-websocket-server/v1",
+    "family": "scalable-websocket-server",
+    "version": "v1",
+    "title": "Scalable Websocket Server",
+    "owner": "@pranavwani",
+    "status": "in-progress"
+  },
+  {
+    "pr": 25,
+    "pr_title": "[Spec] Server Sent Events (scaffold)",
+    "pr_url": "https://github.com/pranavwani/design-spec-v1/pull/25",
+    "updated_at": "2025-09-07T11:24:33Z",
+    "author": "github-actions[bot]",
+    "dir": "_specs/server-sent-events/v1",
+    "family": "server-sent-events",
+    "version": "v1",
+    "title": "Server Sent Events",
+    "owner": "@pranavwani",
+    "status": "in-progress"
+  },
+  {
+    "pr": 23,
+    "pr_title": "[Spec] Model Context Protocol (scaffold)",
+    "pr_url": "https://github.com/pranavwani/design-spec-v1/pull/23",
+    "updated_at": "2025-09-07T10:53:13Z",
+    "author": "github-actions[bot]",
+    "dir": "_specs/model-context-protocol/v1",
+    "family": "model-context-protocol",
+    "version": "v1",
+    "title": "Model Context Protocol",
+    "owner": "@pranavwani",
+    "status": "in-progress"
+  }
+]
