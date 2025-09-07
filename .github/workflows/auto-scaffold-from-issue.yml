@@ -121,6 +121,14 @@ jobs:
             echo 'EOF'
           } >> $GITHUB_ENV
 
+          # --- derive safe folder/branch and export them ---
+          SAFE_FAMILY=$(echo "${{ steps.fields.outputs.family }}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+          SAFE_VERSION=$(echo "${{ steps.fields.outputs.version }}" | tr -cd 'a-zA-Z0-9-')
+
+          echo "BRANCH=spec/${SAFE_FAMILY}-${SAFE_VERSION}" >> "$GITHUB_ENV"
+          echo "DIR=_specs/${SAFE_FAMILY}/${SAFE_VERSION}"   >> "$GITHUB_ENV"
+
+
       - name: Derive human-readable artifacts list (optional)
         run: |
           echo "ARTIFACTS_LIST=$(echo "$ARTIFACTS_JSON" | jq -r 'if type=="array" and length>0 then join(", ") else "-" end')" >> $GITHUB_ENV
@@ -138,6 +146,7 @@ jobs:
       - name: Scaffold spec folder
         run: |
           set -eux
+          : "${DIR:?DIR is not set. Check the 'Compute env vars' step exported DIR to \$GITHUB_ENV}"
 
           mkdir -p "$DIR/assets/diagrams" "$DIR/assets/images" "$DIR/assets/attachments"
 
