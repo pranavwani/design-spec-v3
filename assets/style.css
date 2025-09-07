@@ -167,3 +167,5 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   .spec-grid { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; padding-right: 0; position: static; max-height: none; }
 }
+
+#spec-content { transition: opacity .12s ease; }

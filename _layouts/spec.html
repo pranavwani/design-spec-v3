@@ -67,13 +67,89 @@ layout: base
     </nav>
   </aside>
 
-  <main class="content">
+  <main id="spec-content" class="content">
     <article class="content-card">
-      {%- if page.status -%}
-        <p class="muted"><strong>Status:</strong> <span class="pill pill--muted">{{ page.status | capitalize }}</span></p>
-      {%- endif -%}
-
       {{ content }}
     </article>
   </main>
 </div>
+
+<script>
+/* PJAX-lite: swap only #spec-content on sidebar clicks */
+(function () {
+  const containerSel = '#spec-content';
+  const navSel = '.side-links a';
+
+  // Helper: only handle same-origin, same-site links
+  function sameOrigin(href) {
+    try { return new URL(href, location.href).origin === location.origin; }
+    catch { return false; }
+  }
+
+  // Mark the active link in the leftbar
+  function setActive(hrefAbs) {
+    document.querySelectorAll(navSel).forEach(a => {
+      a.classList.toggle('active', a.href === hrefAbs);
+    });
+  }
+
+  // Swap right content
+  async function load(url, { push=true, scroll=true } = {}) {
+    const res = await fetch(url, { headers: { 'X-PJAX': '1' }});
+    if (!res.ok) throw new Error('Fetch failed: ' + url);
+
+    const html = await res.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const next = doc.querySelector(containerSel);
+    const curr = document.querySelector(containerSel);
+
+    if (!next || !curr) {
+      // Fallback if layout not found
+      location.assign(url);
+      return;
+    }
+
+    // Optional: tiny fade
+    curr.style.opacity = '0.35';
+
+    // Replace the right pane
+    curr.replaceWith(next);
+
+    // Update document title (use the fetched page's title)
+    if (doc.title) document.title = doc.title;
+
+    // Active link
+    setActive(new URL(url, location.href).href);
+
+    // Scroll to top of right pane
+    if (scroll) next.scrollIntoView({ block: 'start' });
+
+    // History API
+    if (push) history.pushState({ pjax: true, url }, '', url);
+  }
+
+  // Intercept clicks in the leftbar
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest(navSel);
+    if (!a) return;
+
+    // Respect modifier keys / new-tab, hashes, external, downloads
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('#') || !sameOrigin(href)) return;
+
+    e.preventDefault();
+    load(href).catch(() => location.assign(href));
+  });
+
+  // Back/forward navigation
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.pjax && e.state.url) {
+      load(e.state.url, { push: false }).catch(() => location.reload());
+    }
+  });
+
+  // Mark active on initial load
+  setActive(location.href);
+})();
+</script>
