@@ -1,8 +1,9 @@
+# .github/workflows/auto-scaffold-from-issue.yml
 name: Auto scaffold spec from issue
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
 
 permissions:
   contents: write
@@ -23,38 +24,72 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Extract fields from Issue Form
+      - name: Extract fields from Issue Form (robust, multiline)
         id: fields
         uses: actions/github-script@v7
         with:
           script: |
-           const body = context.payload.issue.body || "";
+            const body = context.payload.issue.body || "";
 
-           // Match **Label...**\nvalue  (label can have extra text after the prefix)
-           function fieldByPrefix(prefix){
-              // Match either **Label**\nvalue OR ### Label\nvalue
-              const re = new RegExp(`(?:\\*\\*|###)\\s*${prefix}[^\\n]*\\s*\\r?\\n([^\\r\\n]+)`, "i");
+            // Escape for regex
+            const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // Capture a block under a heading or bold label (multiline):
+            // Matches "**Label**\n<block>" or "### Label\n<block>"
+            // until next "**" / "###" or end.
+            function block(label){
+              const re = new RegExp(
+                `(?:^|\\n)\\s*(?:\\*\\*|###)\\s*${esc(label)}[^\\n]*\\n` +
+                `([\\s\\S]*?)` +
+                `(?=\\n\\s*(?:\\*\\*|###)\\s*|$)`,
+                'i'
+              );
               const m = body.match(re);
               return m ? m[1].trim() : "";
             }
 
+            // First non-empty line of a block (single-line field)
+            function oneLine(label){
+              const b = block(label);
+              const s = (b.split(/\r?\n/).find(Boolean) || "").trim();
+              return s;
+            }
 
-           const titleLine = fieldByPrefix("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
-           const family    = fieldByPrefix("Spec family");              // tolerates "(folder key)" etc.
-           const version   = fieldByPrefix("Version");                  // tolerates "(v1)", "(vN)", etc.
-           const owner     = fieldByPrefix("Spec owner");               // tolerates "(GitHub handle)"
+            // Parse checkboxes (GitHub renders "- [x] Label")
+            function checked(){
+              const out = [];
+              const re = /- \[[xX]\] (.+)/g;
+              let m;
+              while ((m = re.exec(body))) out.push(m[1].trim());
+              return out;
+            }
 
-           if(!family || !version){
-              core.setFailed("Could not parse 'family' or 'version' from the issue form. Ensure the Issue Form field labels match the workflow.");
-           }
+            const title   = oneLine("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
+            const family  = oneLine("Spec family (folder key)") || oneLine("Spec family");
+            const version = oneLine("Version (vN)") || oneLine("Version");
+            const owner   = oneLine("Spec owner (GitHub handle)") || oneLine("Spec owner");
+            const summary = block("1–2 paragraph summary") || block("Summary");
+            const scope   = block("Scope (in/out)") || block("Scope");
+            const risks   = block("Risks & assumptions") || block("Risks");
+            const links   = block("Related links") || block("Links");
+            const artifacts = checked();
 
-           core.setOutput("title", titleLine);
-           core.setOutput("family", family);
-           core.setOutput("version", version);
-           core.setOutput("owner", owner || "");
-           core.setOutput("issue_number", context.payload.issue.number.toString());
+            if (!family || !version) {
+              core.setFailed("Missing 'Spec family' or 'Version' from the Issue Form.");
+            }
 
-      - name: Set env from parsed fields
+            core.setOutput("title", title);
+            core.setOutput("family", family);
+            core.setOutput("version", version);
+            core.setOutput("owner", owner);
+            core.setOutput("summary", summary);
+            core.setOutput("scope", scope);
+            core.setOutput("risks", risks);
+            core.setOutput("links", links);
+            core.setOutput("artifacts", JSON.stringify(artifacts));
+            core.setOutput("issue_number", String(context.payload.issue.number));
+
+      - name: Compute env vars
         run: |
           echo "TITLE=${{ steps.fields.outputs.title }}" >> $GITHUB_ENV
           echo "FAMILY=${{ steps.fields.outputs.family }}" >> $GITHUB_ENV
@@ -62,60 +97,359 @@ jobs:
           echo "OWNER=${{ steps.fields.outputs.owner }}" >> $GITHUB_ENV
           echo "ISSUE_NUMBER=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
           echo "TODAY=$(date +%F)" >> $GITHUB_ENV
-          # sanitize branch name
+
+          # Multiline env (Summary/Scope/Risks/Links)
+          {
+            echo 'SUMMARY<<EOF'
+            echo "${{ steps.fields.outputs.summary }}"
+            echo 'EOF'
+            echo 'SCOPE<<EOF'
+            echo "${{ steps.fields.outputs.scope }}"
+            echo 'EOF'
+            echo 'RISKS<<EOF'
+            echo "${{ steps.fields.outputs.risks }}"
+            echo 'EOF'
+            echo 'LINKS<<EOF'
+            echo "${{ steps.fields.outputs.links }}"
+            echo 'EOF'
+          } >> $GITHUB_ENV
+
+          # JSON array string of checkbox labels
+          echo "ARTIFACTS=${{ steps.fields.outputs.artifacts }}" >> $GITHUB_ENV
+
+          # Safe path/branch
           SAFE_FAMILY=$(echo "${{ steps.fields.outputs.family }}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
           SAFE_VERSION=$(echo "${{ steps.fields.outputs.version }}" | tr -cd 'a-zA-Z0-9-')
           echo "BRANCH=spec/${SAFE_FAMILY}-${SAFE_VERSION}" >> $GITHUB_ENV
           echo "DIR=_specs/${SAFE_FAMILY}/${SAFE_VERSION}" >> $GITHUB_ENV
 
+      - name: Compute next spec id
+        run: |
+          set -e
+          NEXT=$(( $(grep -RhoE '^id:\s*[0-9]+' _specs 2>/dev/null | awk '{print $2}' | sort -n | tail -1 || echo 0) + 1 ))
+          echo "NEXT_ID=$NEXT" >> $GITHUB_ENV
+          echo "Next ID = $NEXT"
+
       - name: Scaffold spec folder
         run: |
           set -eux
-          mkdir -p "$DIR"
 
-          # index.md (allow expansion)
-          cat > "$DIR/index.md" <<EOF
+          mkdir -p "$DIR/assets/diagrams" "$DIR/assets/images" "$DIR/assets/attachments"
+
+          # Resolve which pages were checked
+          HLD=false; LLD=false; API=false; UX=false; DM=false; ROPS=false; QA=false
+          echo "$ARTIFACTS" | grep -qi 'HLD'            && HLD=true
+          echo "$ARTIFACTS" | grep -qi 'LLD'            && LLD=true
+          echo "$ARTIFACTS" | grep -qi 'API Spec\|API'  && API=true
+          echo "$ARTIFACTS" | grep -qi 'UX'             && UX=true
+          echo "$ARTIFACTS" | grep -qi 'Data Model'     && DM=true
+          echo "$ARTIFACTS" | grep -qi 'Rollout & Ops'  && ROPS=true
+          echo "$ARTIFACTS" | grep -qi 'QA / Test Plan' && QA=true
+
+          # Write index.md (front-matter first)
+          cat > "$DIR/index.md" <<'EOF'
           ---
           layout: spec
-          id: 0
-          family: ${FAMILY}
-          version: ${VERSION}
-          title: ${TITLE}
+          id: __ID__
+          family: __FAMILY__
+          version: __VERSION__
+          title: __TITLE__
           status: in-progress
-          owner: "${OWNER}"
+          owner: "__OWNER__"
           team: ""
-          created_at: ${TODAY}
-          updated_at:
+          created_at: __TODAY__
+          updated_at: __TODAY__
           tags: []
-          changelog: []
+          changelog:
+            - date: __TODAY__
+              text: "Initial scaffold from issue #__ISSUE__"
+          nav_title: "Overview"
+          nav_order: 0
           ---
           ## Summary
-          (copy details from the proposal issue #${ISSUE_NUMBER})
+          __SUMMARY__
 
-          ## Goals / Non-goals
-          - 
+          ## Scope
+          __SCOPE__
 
-          ## Acceptance Criteria
-          - 
+          ## Risks & assumptions
+          __RISKS__
 
           ## Related Docs
-          - [HLD](./hld.md) · [LLD](./lld.md) · [API](./api.md) · [UX](./ux.md)
           EOF
 
-              # sibling docs
-              for f in hld lld api ux; do
-                cat > "$DIR/${f}.md" <<EOF
+          # Replace placeholders (escape sed metachars)
+          esc () { printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'; }
+          sed -i \
+            -e "s|__ID__|$(esc "$NEXT_ID")|g" \
+            -e "s|__FAMILY__|$(esc "$FAMILY")|g" \
+            -e "s|__VERSION__|$(esc "$VERSION")|g" \
+            -e "s|__TITLE__|$(esc "$TITLE")|g" \
+            -e "s|__OWNER__|$(esc "$OWNER")|g" \
+            -e "s|__TODAY__|$(esc "$TODAY")|g" \
+            -e "s|__ISSUE__|$(esc "$ISSUE_NUMBER")|g" \
+            -e "s|__SUMMARY__|$(esc "$SUMMARY")|g" \
+            -e "s|__SCOPE__|$(esc "$SCOPE")|g" \
+            -e "s|__RISKS__|$(esc "$RISKS")|g" \
+            "$DIR/index.md"
+
+          # Append Related Docs bullets based on selections
+          {
+            $HLD  && echo "- [High-Level Design](./hld.md)"
+            $LLD  && echo "- [Low-Level Design](./lld.md)"
+            $API  && echo "- [API](./api.md)"
+            $UX   && echo "- [UX](./ux.md)"
+            $DM   && echo "- [Data Model](./data-model.md)"
+            $ROPS && echo "- [Rollout & Ops](./rollout-ops.md)"
+            $QA   && echo "- [QA / Test Plan](./qa-test.md)"
+          } >> "$DIR/index.md"
+
+          # Append Related Links from the Issue Form (if any)
+          if [ -n "$LINKS" ]; then
+            printf '\n## Related Links\n' >> "$DIR/index.md"
+            echo "$LINKS" | sed 's/^/- /' >> "$DIR/index.md"
+          fi
+
+          # Helper to write a sibling page with skeleton content
+          write_page () {
+            local file="$1"
+            local title nav order
+            case "$file" in
+              hld)         title="HLD";            nav="High-Level Design"; order=10 ;;
+              lld)         title="LLD";            nav="Low-Level Design";  order=20 ;;
+              data-model)  title="Data Model";     nav="Data Model";        order=25 ;;
+              api)         title="API";            nav="API";               order=30 ;;
+              ux)          title="UX";             nav="UX";                order=40 ;;
+              rollout-ops) title="Rollout & Ops";  nav="Rollout & Ops";     order=50 ;;
+              qa-test)     title="QA / Test Plan"; nav="QA / Test Plan";    order=60 ;;
+              *) echo "unknown page type $file" ; return 1 ;;
+            esac
+
+            # Front matter + heading
+            cat > "$DIR/${file}.md" <<EOF
           ---
           layout: spec
-          title: ${TITLE} — $(echo "$f" | tr 'a-z' 'A-Z')
+          title: ${TITLE} — ${title}
+          nav_title: "${nav}"
+          nav_order: ${order}
           ---
-          # $(echo "$f" | tr 'a-z' 'A-Z')
-          (fill me)
+          # ${title}
           EOF
-              done
 
-              # ensure git sees files
-              git add "$DIR"
+            # Skeleton content per type
+            case "$file" in
+              hld)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## Context & Goals
+          - …
+
+          ## Architecture (diagram)
+          - Place diagrams under `assets/diagrams/` and embed here.
+
+          ## Components
+          | Component | Responsibility | Runs where | Notes |
+          |---|---|---|---|
+          |   |   |   |   |
+
+          ## Interactions
+          - Key request/response flows
+          - External integrations
+
+          ## Non-functional Requirements
+          - Performance, scalability, security, observability
+
+          ## Constraints & Assumptions
+          - …
+
+          ## Alternatives Considered
+          - …
+
+          ## Risks & Mitigations
+          - …
+
+          ## Dependencies
+          - …
+
+          ## Open Questions
+          - …
+          EOF
+                ;;
+              lld)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## Module Breakdown
+          - Module A/B with public interfaces and internals
+
+          ## Data Structures & Storage
+          - Entities/DTOs, schemas, migrations
+
+          ## Algorithms & State
+          - Pseudocode / state machines
+
+          ## Configuration
+          ```yaml
+          feature_enabled: true
+          timeout_ms: 5000
+          retry: { attempts: 3 }
+          ```
+
+          ## Error Handling
+          - Taxonomy, retries, idempotency, backoff
+
+          ## Logging & Instrumentation
+          - Logs, metrics (names/types/labels), tracing spans
+
+          ## Security Details
+          - Permissions, secrets, validation
+
+          ## I18n/Accessibility (if applicable)
+          - …
+
+          ## Edge Cases
+          - …
+          EOF
+                ;;
+              data-model)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## ERD
+          - Embed from `assets/diagrams/` or link to an ERD tool export.
+
+          ## Tables / Collections
+          - Fields, types, indexes
+
+          ## Retention / Archival / PII
+          - Classification & masking
+
+          ## Example Queries
+          - …
+          EOF
+                ;;
+              api)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## Overview
+          - Audience & usage; versioning policy
+
+          ## Base Info
+          - **Base URL:** `https://api.example.com`
+          - **Auth:** Bearer / API key / OAuth2
+          - **Content-Type:** `application/json`
+          - **Rate limits / Pagination / Idempotency**
+          - **Webhooks** (delivery, retries, signatures)
+
+          ## Errors
+          ```json
+          { "error": { "code": "RESOURCE_NOT_FOUND", "message": "…", "details": {} } }
+          ```
+
+          ## Endpoints
+          ### GET /v1/things
+          - Params: `page`, `limit`
+          - Response:
+          ```json
+          { "items": [], "next": "…" }
+          ```
+          - Sample:
+          ```bash
+          curl -H "Authorization: Bearer $TOKEN" \
+               "https://api.example.com/v1/things?limit=20"
+          ```
+
+          ## Webhooks (if any)
+          - …
+
+          ## SDK Mapping
+          - …
+          EOF
+                ;;
+              ux)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## Personas & Jobs-to-be-Done
+          - …
+
+          ## Use-cases / Scenarios
+          - …
+
+          ## Information Architecture
+          - Navigation map
+
+          ## Key Flows
+          - Link wireframes in `assets/images/` or Figma
+
+          ## Screens / States
+          - Loading/empty/error, edge cases
+
+          ## Content & Microcopy
+          - Tone guidelines, validation messages
+
+          ## Accessibility
+          - Keyboard flows, contrast, ARIA notes
+
+          ## Responsiveness & Platforms
+          - Breakpoints
+
+          ## Telemetry
+          - Events & properties for UX analysis
+          EOF
+                ;;
+              rollout-ops)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## Launch Plan
+          - Flags/config, migrations/backfill, rollback
+
+          ## Monitoring & SLOs
+          - SLIs/SLOs, dashboards, alerts
+
+          ## Runbook
+          - On-call steps; rollback strategy
+
+          ## Post-launch
+          - Success criteria; cleanup tasks
+          EOF
+                ;;
+              qa-test)
+                cat >> "$DIR/${file}.md" <<'EOF'
+          ## Strategy
+          - Unit / integration / E2E
+
+          ## Coverage vs Acceptance Criteria
+          - Trace each AC to tests
+
+          ## Test Data & Environments
+          - …
+
+          ## Performance / Security / UAT
+          - …
+
+          ## Sign-off Checklist
+          - …
+          EOF
+                ;;
+            esac
+          }
+
+          # Generate the selected pages
+          $HLD  && write_page hld
+          $LLD  && write_page lld
+          $DM   && write_page data-model
+          $API  && write_page api
+          $UX   && write_page ux
+          $ROPS && write_page rollout-ops
+          $QA   && write_page qa-test
+
+          # assets README
+          cat > "$DIR/assets/README.md" <<'EOF'
+          # Assets for this spec
+
+          Use this folder for diagrams, images, and attachments referenced by pages in this spec.
+
+          Suggested:
+          - `assets/diagrams/`     — draw.io, Excalidraw, PlantUML exports, ERDs
+          - `assets/images/`       — screenshots/static images
+          - `assets/attachments/`  — PDFs, sheets, other binaries
+          EOF
+
+          touch "$DIR/assets/.gitkeep"
+
+          git add "$DIR"
 
       - name: Create draft PR
         id: cpr
@@ -126,11 +460,12 @@ jobs:
           body: |
             Closes #${{ env.ISSUE_NUMBER }}
 
-            This PR scaffolds `_specs/${{ env.FAMILY }}/${{ env.VERSION }}/` with:
-            - index.md (status: in-progress)
-            - hld.md / lld.md / api.md / ux.md placeholders
+            Scaffolds `_specs/${{ env.FAMILY }}/${{ env.VERSION }}/` with:
+            - `index.md` (status: in-progress, id: ${{ env.NEXT_ID }})
+            - Sibling pages (selected): ${{ env.ARTIFACTS }}
+            - `assets/` folder (diagrams/images/attachments)
 
-            Please fill out content and set `id` to the next available integer before merge.
+            Please fill out content and adjust metadata as needed.
           commit-message: "chore(spec): scaffold ${{ env.FAMILY }}/${{ env.VERSION }} from issue #${{ env.ISSUE_NUMBER }}"
           draft: true
           labels: spec:proposal,in-progress

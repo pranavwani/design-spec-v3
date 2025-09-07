@@ -1,0 +1,100 @@
+name: Spec Post-merge Update
+
+on:
+  pull_request:
+    types: [closed]
+    paths:
+      - "_specs/**"
+
+permissions:
+  contents: write
+
+jobs:
+  postmerge:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      TODAY: ${{ github.event.pull_request.merged_at && github.event.pull_request.merged_at[:10] || '' }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install yq
+        run: |
+          sudo curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Collect changed spec directories
+        id: dirs
+        run: |
+          set -e
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          git show --name-only --pretty="" "$MERGE_SHA" | \
+            grep '^_specs/' | sed 's@\(_specs/[^/]\+/[^/]\+\)/.*@\1@' | sort -u > /tmp/spec_dirs.txt || true
+          echo "dirs<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/spec_dirs.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          cat /tmp/spec_dirs.txt
+
+      - name: Determine label-based status policy
+        id: policy
+        run: |
+          set -e
+          labels='${{ toJson(github.event.pull_request.labels) }}'
+          echo "$labels" | grep -qi '"name":"spec:deprecated"' && echo "TARGET=deprecated" >> $GITHUB_ENV || true
+          echo "$labels" | grep -qi '"name":"spec:activate"'   && echo "TARGET=active" >> $GITHUB_ENV || true
+          echo "$labels" | grep -qi '"name":"keep-draft\|spec:draft"' && echo "TARGET=in-progress" >> $GITHUB_ENV || true
+          : "${TARGET:=}" ; echo "TARGET=$TARGET" >> $GITHUB_ENV
+          echo "Using TARGET='$TARGET' (empty means auto-activate if currently draft)"
+
+      - name: Update index.md in affected spaces
+        if: steps.dirs.outputs.dirs != ''
+        run: |
+          set -euo pipefail
+          CHANGE_TEXT="Merged PR #${PR_NUMBER}: ${PR_TITLE}"
+
+          while IFS= read -r dir; do
+            f="$dir/index.md"
+            [ -f "$f" ] || continue
+
+            # Extract front matter and body
+            awk 'NR==1&&$0=="---"{in=1;next} in{ if($0=="---"){exit} print }' "$f" > /tmp/fm.yml
+            awk 'p{print} /^---[ \t]*$/{c++} c==2{p=1}' "$f" > /tmp/body.md
+
+            cur_status=$(yq '.status // ""' /tmp/fm.yml)
+            new_status="$cur_status"
+            if [ -n "${TARGET:-}" ]; then
+              new_status="$TARGET"
+            else
+              # default: if it was draft/in-progress, activate on first merge
+              [ "$cur_status" = "in-progress" ] && new_status="active"
+            fi
+
+            yq -y \
+              --arg today "$TODAY" \
+              --arg status "$new_status" \
+              --arg text "$CHANGE_TEXT" \
+              '.updated_at = $today
+               | .status = $status
+               | .changelog = [{"date": $today, "text": $text}] + (.changelog // [])' \
+              /tmp/fm.yml > /tmp/fm.new.yml
+
+            {
+              echo '---'
+              cat /tmp/fm.new.yml
+              echo '---'
+              cat /tmp/body.md
+            } > "$f"
+
+            echo "Updated $f  (status: $cur_status → $new_status)"
+          done < <(printf '%s\n' "${{ steps.dirs.outputs.dirs }}")
+
+          git config user.name  "spec-bot"
+          git config user.email "spec-bot@users.noreply.github.com"
+          git add _specs
+          git commit -m "chore(spec): update status/updated_at after merge of #${PR_NUMBER}" || echo "Nothing to commit"
+          git push

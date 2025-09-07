@@ -2,39 +2,107 @@ name: "New Design Spec"
 description: "Propose a new design spec"
 title: "[Spec] <short title>"
 labels: ["spec:proposal"]
+
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to scaffold a new spec folder under `_specs/<family>/<version>/`.
+        The **checkboxes** control which sibling pages are generated.
+
   - type: input
     id: title
-    attributes: { label: "Spec title", placeholder: "Flutter SDK" }
-    validations: { required: true }
+    attributes:
+      label: "Spec title"
+      placeholder: "Flutter SDK"
+      description: "Short, human-readable title."
+    validations:
+      required: true
+
   - type: input
     id: family
-    attributes: { label: "Spec family (folder key)", placeholder: "flutter-sdk" }
-    validations: { required: true }
+    attributes:
+      label: "Spec family (folder key)"
+      description: "Lowercase, hyphenated. This becomes the folder name under `_specs/`."
+      placeholder: "flutter-sdk"
+    validations:
+      required: true
+
   - type: input
     id: version
-    attributes: { label: "Version (vN)", placeholder: "v1" }
-    validations: { required: true }
+    attributes:
+      label: "Version (vN)"
+      description: "Semantic or simple version label."
+      placeholder: "v1"
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: "Spec owner (GitHub handle)"
+      placeholder: "@username"
+      description: "Primary DRI for this spec."
+    validations:
+      required: true
+
   - type: textarea
     id: summary
-    attributes: { label: "1–2 paragraph summary" }
-    validations: { required: true }
+    attributes:
+      label: "1–2 paragraph summary"
+      description: "Appears in the Overview page under **Summary**."
+      placeholder: |
+        What are we building and why now?
+        Who is it for? Expected impact?
+    validations:
+      required: true
+
   - type: textarea
     id: scope
-    attributes: { label: "Scope (in/out)" }
+    attributes:
+      label: "Scope (in/out)"
+      description: "Bullets or paragraphs. Appears in **Scope**."
+      placeholder: |
+        In-scope:
+        - ...
+        Out-of-scope:
+        - ...
+
   - type: textarea
     id: risks
-    attributes: { label: "Risks & assumptions" }
+    attributes:
+      label: "Risks & assumptions"
+      placeholder: |
+        - Assumption A
+        - Risk B
+        - Mitigation C
+
+  - type: textarea
+    id: links
+    attributes:
+      label: "Related links (optional)"
+      description: "One per line: PRDs, tickets, diagrams, spreadsheets, prior art, etc."
+      placeholder: |
+        https://...
+
   - type: checkboxes
     id: artifacts
     attributes:
-      label: "Artifacts to include"
+      label: "Generate pages for"
+      description: "Selected pages will be created as siblings of the Overview page."
       options:
         - label: "HLD"
         - label: "LLD"
         - label: "API Spec"
         - label: "UX"
-  - type: input
-    id: owner
-    attributes: { label: "Spec owner (GitHub handle)", placeholder: "@username" }
-    validations: { required: true }
+        - label: "Data Model"
+        - label: "Rollout & Ops"
+        - label: "QA / Test Plan"
+
+  - type: markdown
+    attributes:
+      value: |
+        **Notes**
+        - The scaffold will create `_specs/<family>/<version>/assets/` with `diagrams/`, `images/`, and `attachments/`.
+        - The Overview (`index.md`) starts as **in-progress** and includes `id`, `created_at`, and `updated_at`.
+        - Sidebar order: Overview (0), HLD (10), LLD (20), Data Model (25), API (30), UX (40), Rollout & Ops (50), QA / Test Plan (60).
