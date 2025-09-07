@@ -44,7 +44,7 @@ title: Home
     {% assign items_sorted = fam.items | sort_natural: "version" %}
     {% assign latest = items_sorted | last %}
     <tr data-status="{{ latest.status | downcase }}">
-      <td data-label="ID">{{ latest.data.id }}</td>
+      <td data-label="ID">{{ latest["id"] | default: latest.data["id"] | default: latest.id }}</td>
       <td data-label="Title">{{ latest.title }}</td>
       <td data-label="Family">{{ latest.family }}</td>
       <td data-label="Version">{{ latest.version }}</td>
