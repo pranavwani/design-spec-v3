@@ -83,22 +83,34 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   justify-content: flex-end;
 }
 
-/* Pills */
+/* Default pill */
 .pill {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
+  line-height: 1;
   background: #eef1f4;
+  border: 1px solid transparent;
 }
 
+/* Status pills (Draft / In-progress / Deprecated) */
 .pill--draft,
 .pill--in-progress {
   background: #fff4cc;
+  border-color: #facc15; /* soft amber border */
 }
 
+.pill--deprecated {
+  background: #fee2e2;
+  border-color: #f87171; /* soft red border */
+}
+
+/* Muted pills (Updated / Created / Owner / Team) */
 .pill--muted {
-  background: #eef1f4;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--sub);
 }
 
 .spec-grid {
