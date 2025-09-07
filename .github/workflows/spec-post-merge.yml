@@ -42,19 +42,30 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
           yq --version
 
-      - name: Collect changed spec directories
+      - name: Collect changed spec directories (via API)
         id: dirs
-        run: |
-          set -e
-          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
-          git show --name-only --pretty="" "$MERGE_SHA" \
-            | grep '^_specs/' \
-            | sed 's@\(_specs/[^/]\+/[^/]\+\)/.*@\1@' \
-            | sort -u > /tmp/spec_dirs.txt || true
-          echo "dirs<<EOF" >> $GITHUB_OUTPUT
-          cat /tmp/spec_dirs.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          cat /tmp/spec_dirs.txt
+        uses: actions/github-script@v7
+        with:
+            script: |
+                const pr = context.payload.pull_request;
+                // List all files changed in the PR
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: pr.number,
+                    per_page: 100
+                });
+
+                // Keep only _specs/** paths and reduce to _specs/<family>/<version> dirs
+                const dirs = [...new Set(
+                    files
+                    .map(f => f.filename)
+                    .filter(p => p.startsWith('_specs/'))
+                    .map(p => p.replace(/^(_specs\/[^/]+\/[^/]+)\/.*/, '$1'))
+                )];
+
+                core.info(`Changed spec dirs:\n${dirs.join('\n') || '(none)'}`);
+                core.setOutput('dirs', dirs.join('\n'));
 
       - name: Determine label-based status policy
         id: policy
