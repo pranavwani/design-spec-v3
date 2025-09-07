@@ -480,7 +480,7 @@ jobs:
 
             Scaffolds `_specs/${{ env.FAMILY }}/${{ env.VERSION }}/` with:
             - `index.md` (status: in-progress, id: ${{ env.NEXT_ID }})
-            - Sibling pages (selected): ${{ env.ARTIFACTS }}
+            - Sibling pages (selected): ${{ env.ARTIFACTS_JSON != '' && join(fromJSON(env.ARTIFACTS_JSON), ', ') || '-' }}
             - `assets/` folder (diagrams/images/attachments)
 
             Please fill out content and adjust metadata as needed.

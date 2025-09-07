@@ -94,8 +94,11 @@ jobs:
             [ -f "$f" ] || continue
 
             # Extract front matter and body
-            awk 'NR==1&&$0=="---"{in=1;next} in{ if($0=="---"){exit} print }' "$f" > /tmp/fm.yml
-            awk 'p{print} /^---[ \t]*$/{c++} c==2{p=1}' "$f" > /tmp/body.md
+            # Front matter (between the first and second ---), without the --- lines
+            awk 'BEGIN{fm=0} /^---[[:space:]]*$/{fm++; next} fm==1{print}' "$f" > /tmp/fm.yml
+
+            # Body (after the second ---)
+            awk 'BEGIN{fm=0} /^---[[:space:]]*$/{fm++; next} fm<2{next} {print}' "$f" > /tmp/body.md
 
             cur_status=$(yq '.status // ""' /tmp/fm.yml)
             target="${TARGET:-}"
