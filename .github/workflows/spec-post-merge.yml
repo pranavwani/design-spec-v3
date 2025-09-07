@@ -93,32 +93,34 @@ jobs:
             f="$dir/index.md"
             [ -f "$f" ] || continue
 
-            # Extract front matter and body
-            # Front matter (between the first and second ---), without the --- lines
+            # --- split front-matter/body (safe awk) ---
             awk 'BEGIN{fm=0} /^---[[:space:]]*$/{fm++; next} fm==1{print}' "$f" > /tmp/fm.yml
-
-            # Body (after the second ---)
             awk 'BEGIN{fm=0} /^---[[:space:]]*$/{fm++; next} fm<2{next} {print}' "$f" > /tmp/body.md
 
-            cur_status=$(yq '.status // ""' /tmp/fm.yml)
+            # current status (yq v4)
+            cur_status=$(yq e '.status // ""' /tmp/fm.yml)
+
+            # decide new status
             target="${TARGET:-}"
             new_status="$cur_status"
             if [ -n "$target" ]; then
               new_status="$target"
             else
-              # default: auto-activate if it was in-progress
               [ "$cur_status" = "in-progress" ] && new_status="active"
             fi
 
-            yq eval \
-              --arg today "$TODAY" \
-              --arg status "$new_status" \
-              --arg text "$CHANGE_TEXT" \
-              '.updated_at = $today
-              | .status = $status
-              | .changelog = [{"date": $today, "text": $text}] + (.changelog // [])' \
+            # export vars so yq can read them via strenv()
+            NEW_STATUS="$new_status"
+            export TODAY NEW_STATUS CHANGE_TEXT
+
+            # --- yq v4 update (no --arg) ---
+            yq e \
+              '.updated_at = strenv(TODAY)
+              | .status = strenv(NEW_STATUS)
+              | .changelog = [{"date": strenv(TODAY), "text": strenv(CHANGE_TEXT)}] + (.changelog // [])' \
               /tmp/fm.yml > /tmp/fm.new.yml
 
+            # stitch back
             { echo '---'; cat /tmp/fm.new.yml; echo '---'; cat /tmp/body.md; } > "$f"
 
             echo "Updated $f  (status: $cur_status → $new_status)"
@@ -129,3 +131,4 @@ jobs:
           git add _specs
           git commit -m "chore(spec): update status/updated_at after merge of #${PR_NUMBER}" || echo "Nothing to commit"
           git push
+                
