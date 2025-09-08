@@ -71,9 +71,9 @@ title: Home
       <td data-label="Epic">
         {%- if r.epic -%}
         {%- if site.jira and site.jira.base_url -%}
-        <a href="{{ site.jira.base_url }}/{{ r.epic }}" target="_blank" rel="noopener">{{ r.epic }}</a>
+        <a href="{{ site.jira.base_url }}/{{ r.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
         {%- else -%}
-        {{ r.epic }}
+        {{ s.epic }}
         {%- endif -%}
         {%- else -%}—{%- endif -%}
       </td>
