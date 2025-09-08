@@ -4,13 +4,15 @@ epic: MXOP-1231
 family: sqlite-support-in-spa
 version: v1
 title: sqlite support in spa
-status: in-progress
+status: active
 owner: "@pranavwani"
 team: ""
 created_at: 2025-09-08
-updated_at: 2025-09-08
+updated_at: "2025-09-08"
 tags: []
 changelog:
+  - date: "2025-09-08"
+    text: 'Merged PR #30: [Spec] sqlite support in spa (scaffold)'
   - date: 2025-09-08
     text: "Initial scaffold from issue #29"
 nav_title: "Overview"
