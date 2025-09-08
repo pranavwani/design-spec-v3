@@ -11,6 +11,15 @@ body:
         The **checkboxes** control which sibling pages are generated.
 
   - type: input
+    id: epic
+    attributes:
+      label: "Jira Epic ID"
+      description: "Format: MXOP-1234"
+      placeholder: "MXOP-1234"
+    validations:
+      required: true
+
+  - type: input
     id: title
     attributes:
       label: "Spec title"

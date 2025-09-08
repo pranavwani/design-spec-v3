@@ -2,7 +2,8 @@ title: Voltmx Design Specs
 description: Design specifications for Voltmx
 markdown: kramdown
 theme: null
-
+jira:
+  base_url: https://hclsw-jiracentral.atlassian.net/browse
 collections:
   specs:
     output: true

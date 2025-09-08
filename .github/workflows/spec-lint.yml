@@ -32,15 +32,13 @@ jobs:
           echo "Changed files:"
           printf '%s\n' "$files"
 
-          get_fm() { # print YAML front-matter (no ---)
-            awk 'NR==1&&$0=="---"{in=1;next} in{ if($0=="---"){exit} print }' "$1"
-          }
-          val() { # get scalar value by key (first occurrence, case-insensitive)
-            printf '%s\n' "$2" | awk -F':[ \t]*' -v k="$1" 'BEGIN{IGNORECASE=1} $1==k{print $2; exit}'
-          }
+          # helpers
+          get_fm() { awk 'NR==1&&$0=="---"{in=1;next} in{ if($0=="---"){exit} print }' "$1"; }
+          val()   { printf '%s\n' "$2" | awk -F':[ \t]*' -v k="$1" 'BEGIN{IGNORECASE=1} $1==k{print $2; exit}'; }
 
           err=0
-          # File-level checks
+          idx_changed=()  # list index.md we’ll later check for Epic uniqueness
+
           while IFS= read -r f; do
             [ -f "$f" ] || continue
             fm="$(get_fm "$f")"
@@ -52,26 +50,41 @@ jobs:
             nav_order=$(val nav_order "$fm")
 
             if [[ "$f" == _specs/*/*/index.md ]]; then
-              id=$(val id "$fm")
+              epic=$(val epic "$fm")
               status=$(val status "$fm")
               owner=$(val owner "$fm")
               created_at=$(val created_at "$fm")
               updated_at=$(val updated_at "$fm")
 
-              [[ "$id" =~ ^[0-9]+$ ]] || { echo "::error file=$f::id must be integer"; err=1; }
-              case "$status" in in-progress|active|deprecated) ;; *) echo "::error file=$f::status must be in-progress|active|deprecated"; err=1;; esac
+              # Epic must exist and match MXOP-1234
+              if ! [[ "$epic" =~ ^MXOP-[0-9]{4}$ ]]; then
+                echo "::error file=$f::epic missing/invalid (expected MXOP-1234)"; err=1;
+              fi
+
+              case "$status" in in-progress|active|deprecated) ;; *)
+                echo "::error file=$f::status must be in-progress|active|deprecated"; err=1;;
+              esac
+
               [ -n "$owner" ] || { echo "::error file=$f::owner missing"; err=1; }
               [[ "$created_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "::error file=$f::created_at must be YYYY-MM-DD"; err=1; }
-              [[ "$updated_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "::error file=$f::updated_at must be YYYY-MM-DD"; err=1; }
+
+              # updated_at may be blank pre-merge; if present must be YYYY-MM-DD
+              if [ -n "$updated_at" ] && ! [[ "$updated_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+                echo "::error file=$f::updated_at must be YYYY-MM-DD or empty pre-merge"; err=1;
+              fi
+
+              # index.md must be Overview @ order 0
               [ "$nav_title" = "Overview" ] || { echo "::error file=$f::index.md nav_title must be 'Overview'"; err=1; }
               [ "$nav_order" = "0" ] || { echo "::error file=$f::index.md nav_order must be 0"; err=1; }
+
+              idx_changed+=("$f")
             else
               [ -n "$nav_title" ] || { echo "::error file=$f::nav_title missing"; err=1; }
               [[ "$nav_order" =~ ^[0-9]+$ ]] || { echo "::error file=$f::nav_order must be integer"; err=1; }
             fi
           done <<< "$files"
 
-          # Directory-level checks: unique nav_order per space
+          # Directory-level check: nav_order unique within each space
           for dir in $(echo "$files" | sed -n 's@^\(_specs/[^/]\+/[^/]\+\)/.*@\1@p' | sort -u); do
             orders=$(grep -RhoE '^nav_order:\s*[0-9]+' "$dir"/*.md 2>/dev/null | awk '{print $2}')
             dups=$(echo "$orders" | sort -n | uniq -d || true)
@@ -80,5 +93,24 @@ jobs:
               err=1
             fi
           done
+
+          # Repo-level check: Epic uniqueness against BASE branch (ignores same file path)
+          if [ ${#idx_changed[@]} -gt 0 ]; then
+            git fetch origin ${{ github.base_ref }} --depth=1
+            for f in "${idx_changed[@]}"; do
+              fm="$(get_fm "$f")"
+              epic=$(val epic "$fm")
+              [ -z "$epic" ] && continue
+
+              # Search base branch tree for the same epic
+              matches=$(git grep -n --fixed-strings -e "epic: ${epic}" "origin/${{ github.base_ref }}" -- _specs/ | cut -d: -f2 | sort -u || true)
+              for m in $matches; do
+                # allow same file path (updating existing spec)
+                if [ "$m" != "$f" ]; then
+                  echo "::error file=$f::Epic '${epic}' already exists at '$m' on ${{ github.base_ref }}"; err=1
+                fi
+              done
+            done
+          fi
 
           exit $err

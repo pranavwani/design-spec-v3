@@ -29,7 +29,7 @@ title: Home
 <table id="specTable" aria-live="polite">
   <thead>
     <tr>
-      <th style="width:70px">ID</th>
+      <th style="width:120px">Epic</th>
       <th>Title</th>
       <th style="width:160px">Family</th>
       <th style="width:90px">Version</th>
@@ -44,7 +44,17 @@ title: Home
     {% assign items_sorted = fam.items | sort_natural: "version" %}
     {% assign latest = items_sorted | last %}
     <tr data-status="{{ latest.status | downcase }}">
-      <td data-label="ID">{{ latest["id"] | default: latest.data["id"] | default: latest.id }}</td>
+      <td data-label="Epic">
+        {%- if latest.epic -%}
+        {%- if site.jira and site.jira.base_url -%}
+        <a href="{{ site.jira.base_url }}/{{ latest.epic }}" target="_blank" rel="noopener">{{ latest.epic }}</a>
+        {%- else -%}
+        {{ latest.epic }}
+        {%- endif -%}
+        {%- else -%}
+        —
+        {%- endif -%}
+      </td>
       <td data-label="Title">{{ latest.title }}</td>
       <td data-label="Family">{{ latest.family }}</td>
       <td data-label="Version">{{ latest.version }}</td>
@@ -58,7 +68,15 @@ title: Home
     {% assign all_sorted = all_specs | sort: "family" | sort_natural: "version" %}
     {% for s in all_sorted %}
     <tr data-status="{{ s.status | downcase }}">
-      <td data-label="ID">{{ s.data.id }}</td>
+      <td data-label="Epic">
+        {%- if r.epic -%}
+        {%- if site.jira and site.jira.base_url -%}
+        <a href="{{ site.jira.base_url }}/{{ r.epic }}" target="_blank" rel="noopener">{{ r.epic }}</a>
+        {%- else -%}
+        {{ r.epic }}
+        {%- endif -%}
+        {%- else -%}—{%- endif -%}
+      </td>
       <td data-label="Title">{{ s.title }}</td>
       <td data-label="Family">{{ s.family }}</td>
       <td data-label="Version">{{ s.version }}</td>
@@ -72,7 +90,17 @@ title: Home
     {%- assign prs = site.data.in_progress | default: [] -%}
     {%- for r in prs -%}
     <tr data-status="in-progress">
-      <td data-label="ID">PR-{{ r.pr }}</td>
+      <td data-label="Epic">
+        {%- if r.epic and r.epic != "" -%}
+        {%- if site.jira and site.jira.base_url -%}
+        <a href="{{ site.jira.base_url }}/{{ r.epic }}" target="_blank" rel="noopener">{{ r.epic }}</a>
+        {%- else -%}
+        {{ r.epic }}
+        {%- endif -%}
+        {%- else -%}
+        — {# fallback if epic missing in JSON #}
+        {%- endif -%}
+      </td>
       <td data-label="Title">{{ r.title }}</td>
       <td data-label="Family"><code>{{ r.family }}</code></td>
       <td data-label="Version"><code>{{ r.version }}</code></td>
@@ -84,6 +112,7 @@ title: Home
     </tr>
     {%- endfor -%}
   </tbody>
+
 </table>
 <div class="table-toolbar">
   <label class="toggle">

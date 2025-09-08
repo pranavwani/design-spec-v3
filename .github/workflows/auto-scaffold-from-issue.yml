@@ -64,6 +64,7 @@ jobs:
               return out;
             }
 
+            const epic    = oneLine("Jira Epic ID");
             const title   = oneLine("Spec title") || context.payload.issue.title.replace(/^\[Spec\]\s*/i,'').trim();
             const family  = oneLine("Spec family (folder key)") || oneLine("Spec family");
             const version = oneLine("Version (vN)") || oneLine("Version");
@@ -76,8 +77,18 @@ jobs:
 
             if (!family || !version) {
               core.setFailed("Missing 'Spec family' or 'Version' from the Issue Form.");
+              return;
+            }
+            if (!epic) {
+              core.setFailed("Missing 'Jira Epic ID' in the Issue Form.");
+              return;
+            }
+            if (!/^MXOP-\d{4}$/.test(epic)) {
+              core.setFailed(`Epic '${epic}' is invalid. Expected 'MXOP-1234'.`);
+              return;
             }
 
+            core.setOutput("epic", epic);
             core.setOutput("title", title);
             core.setOutput("family", family);
             core.setOutput("version", version);
@@ -91,10 +102,11 @@ jobs:
 
       - name: Compute env vars
         run: |
-          echo "TITLE=${{ steps.fields.outputs.title }}" >> $GITHUB_ENV
-          echo "FAMILY=${{ steps.fields.outputs.family }}" >> $GITHUB_ENV
+          echo "EPIC=${{ steps.fields.outputs.epic }}"       >> $GITHUB_ENV
+          echo "TITLE=${{ steps.fields.outputs.title }}"     >> $GITHUB_ENV
+          echo "FAMILY=${{ steps.fields.outputs.family }}"   >> $GITHUB_ENV
           echo "VERSION=${{ steps.fields.outputs.version }}" >> $GITHUB_ENV
-          echo "OWNER=${{ steps.fields.outputs.owner }}" >> $GITHUB_ENV
+          echo "OWNER=${{ steps.fields.outputs.owner }}"     >> $GITHUB_ENV
           echo "ISSUE_NUMBER=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
           echo "TODAY=$(date +%F)" >> $GITHUB_ENV
 
@@ -125,25 +137,70 @@ jobs:
           SAFE_FAMILY=$(echo "${{ steps.fields.outputs.family }}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
           SAFE_VERSION=$(echo "${{ steps.fields.outputs.version }}" | tr -cd 'a-zA-Z0-9-')
 
-          echo "BRANCH=spec/${SAFE_FAMILY}-${SAFE_VERSION}" >> "$GITHUB_ENV"
+          # one branch per Epic
+          echo "BRANCH=spec/${EPIC}" >> "$GITHUB_ENV"
           echo "DIR=_specs/${SAFE_FAMILY}/${SAFE_VERSION}"   >> "$GITHUB_ENV"
 
+      - name: Verify jq is available
+        run: jq --version
 
       - name: Derive human-readable artifacts list (optional)
         run: |
           echo "ARTIFACTS_LIST=$(echo "$ARTIFACTS_JSON" | jq -r 'if type=="array" and length>0 then join(", ") else "-" end')" >> $GITHUB_ENV
 
-      - name: Compute next spec id
+      # 🔐 Guard: if branch exists, comment and stop
+      - name: "Guard: handle existing Epic branch / PR (comment & stop)"
+        id: guard
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner  = context.repo.owner;
+            const repo   = context.repo.repo;
+            const epic   = process.env.EPIC;
+            const branch = `spec/${epic}`;
+
+            let branchExists = false;
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+              branchExists = true;
+            } catch {}
+
+            if (!branchExists) { core.setOutput('ok', 'true'); return; }
+
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', head: `${owner}:${branch}`, per_page: 100
+            });
+
+            let body = `❌ **Scaffold aborted** for **${epic}**.\n\nA branch \`${branch}\` already exists`;
+            if (prs.length) {
+              body += ` (open PR: ${prs[0].html_url}).\n\n**What to do:**\n` +
+                      `1. Continue work in that PR, or\n` +
+                      `2. Back up changes → delete the PR and branch → re-raise the proposal.`;
+            } else {
+              body += `.\n\n**What to do:**\n` +
+                      `1. Back up any changes from \`${branch}\` (clone or **Code → Download ZIP**).\n` +
+                      `2. Delete the branch in GitHub (**Repo → Branches → Delete**).\n` +
+                      `3. Re-raise the proposal (label this issue \`spec:proposal\` again).`;
+            }
+            body += `\n\n_Note: The scaffold only runs when the Epic branch does **not** exist._`;
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: Number(process.env.ISSUE_NUMBER), body
+            });
+
+            core.setOutput('ok', 'false');
+
+      - name: Enforce Epic uniqueness on default branch
+        if: steps.guard.outputs.ok == 'true'
         run: |
           set -e
-          NEXT=$(( $(grep -RhoE '^id:\s*[0-9]+' _specs 2>/dev/null | awk '{print $2}' | sort -n | tail -1 || echo 0) + 1 ))
-          echo "NEXT_ID=$NEXT" >> $GITHUB_ENV
-          echo "Next ID = $NEXT"
-
-      - name: Verify jq is available (optional)
-        run: jq --version
+          if git grep -R --fixed-strings --line-number "epic: ${EPIC}" -- "_specs/" >/dev/null 2>&1; then
+            echo "::error::A spec with epic '${EPIC}' already exists on the default branch."
+            exit 1
+          fi
 
       - name: Scaffold spec folder
+        if: steps.guard.outputs.ok == 'true'
         run: |
           set -eux
           : "${DIR:?DIR is not set. Check the 'Compute env vars' step exported DIR to \$GITHUB_ENV}"
@@ -152,23 +209,21 @@ jobs:
 
           # Resolve which pages were checked (from $ARTIFACTS_JSON JSON array)
           HLD=false; LLD=false; API=false; UX=false; DM=false; ROPS=false; QA=false
-
           has () { echo "$ARTIFACTS_JSON" | jq -e --arg x "$1" 'type=="array" and any(.[]?; . == $x)' >/dev/null 2>&1; }
-
           has 'HLD'            && HLD=true
           has 'LLD'            && LLD=true
-          has 'API Spec'       && API=true   # accept either label
+          has 'API Spec'       && API=true
           has 'API'            && API=true
           has 'UX'             && UX=true
           has 'Data Model'     && DM=true
           has 'Rollout & Ops'  && ROPS=true
           has 'QA / Test Plan' && QA=true
 
-          # Write index.md (front-matter first)
+          # index.md — use epic
           cat > "$DIR/index.md" <<'EOF'
           ---
           layout: spec
-          id: __ID__
+          epic: __EPIC__
           family: __FAMILY__
           version: __VERSION__
           title: __TITLE__
@@ -199,7 +254,7 @@ jobs:
           # Replace placeholders (escape sed metachars)
           esc () { printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'; }
           sed -i \
-            -e "s|__ID__|$(esc "$NEXT_ID")|g" \
+            -e "s|__EPIC__|$(esc "$EPIC")|g" \
             -e "s|__FAMILY__|$(esc "$FAMILY")|g" \
             -e "s|__VERSION__|$(esc "$VERSION")|g" \
             -e "s|__TITLE__|$(esc "$TITLE")|g" \
@@ -470,17 +525,20 @@ jobs:
           git add "$DIR"
 
       - name: Create draft PR
+        if: steps.guard.outputs.ok == 'true'
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: ${{ env.BRANCH }}
+          branch: ${{ env.BRANCH }}  # spec/<EPIC>
           title: "[Spec] ${{ env.TITLE }} (scaffold)"
           body: |
             Closes #${{ env.ISSUE_NUMBER }}
 
+            **Epic:** ${{ vars.JIRA_BASE && format('[{0}]({1}/{0})', env.EPIC, vars.JIRA_BASE) || env.EPIC }}
+
             Scaffolds `_specs/${{ env.FAMILY }}/${{ env.VERSION }}/` with:
-            - `index.md` (status: in-progress, id: ${{ env.NEXT_ID }})
-            - Sibling pages (selected): ${{ env.ARTIFACTS_JSON != '' && join(fromJSON(env.ARTIFACTS_JSON), ', ') || '-' }}
+            - `index.md` (status: in-progress)
+            - Sibling pages (selected): ${{ env.ARTIFACTS_LIST }}
             - `assets/` folder (diagrams/images/attachments)
 
             Please fill out content and adjust metadata as needed.
@@ -489,15 +547,14 @@ jobs:
           labels: spec:proposal,in-progress
 
       - name: Comment PR link on the issue
-        if: steps.cpr.outputs.pull-request-url != ''
+        if: steps.guard.outputs.ok == 'true' && steps.cpr.outputs.pull-request-url != ''
         uses: actions/github-script@v7
         with:
           script: |
             const prUrl = "${{ steps.cpr.outputs.pull-request-url }}";
-            const issue_number = Number(process.env.ISSUE_NUMBER);
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number,
-              body: `🚀 Scaffolded a draft PR: ${prUrl}`
+              issue_number: Number(process.env.ISSUE_NUMBER),
+              body: `🚀 Scaffolded a draft PR for **${process.env.EPIC}**: ${prUrl}`
             });
