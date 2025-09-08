@@ -102,7 +102,8 @@ jobs:
 
       - name: Compute env vars
         run: |
-          echo "EPIC=${{ steps.fields.outputs.epic }}"       >> $GITHUB_ENV
+          set -euo pipefail
+
           echo "TITLE=${{ steps.fields.outputs.title }}"     >> $GITHUB_ENV
           echo "FAMILY=${{ steps.fields.outputs.family }}"   >> $GITHUB_ENV
           echo "VERSION=${{ steps.fields.outputs.version }}" >> $GITHUB_ENV
@@ -110,36 +111,51 @@ jobs:
           echo "ISSUE_NUMBER=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
           echo "TODAY=$(date +%F)" >> $GITHUB_ENV
 
-          # Multiline envs
+          # ----- multiline envs -----
           {
-            echo 'SUMMARY<<EOF'
-            echo "${{ steps.fields.outputs.summary }}"
-            echo 'EOF'
-            echo 'SCOPE<<EOF'
-            echo "${{ steps.fields.outputs.scope }}"
-            echo 'EOF'
-            echo 'RISKS<<EOF'
-            echo "${{ steps.fields.outputs.risks }}"
-            echo 'EOF'
-            echo 'LINKS<<EOF'
-            echo "${{ steps.fields.outputs.links }}"
-            echo 'EOF'
+            echo 'SUMMARY<<EOF'; echo "${{ steps.fields.outputs.summary }}"; echo 'EOF'
+            echo 'SCOPE<<EOF';   echo "${{ steps.fields.outputs.scope }}";   echo 'EOF'
+            echo 'RISKS<<EOF';   echo "${{ steps.fields.outputs.risks }}";   echo 'EOF'
+            echo 'LINKS<<EOF';   echo "${{ steps.fields.outputs.links }}";   echo 'EOF'
           } >> $GITHUB_ENV
 
-          # JSON array of checked options (use heredoc to preserve quotes/spaces)
+          # JSON array of checked options
           {
             echo 'ARTIFACTS_JSON<<EOF'
             echo '${{ steps.fields.outputs.artifacts }}'
             echo 'EOF'
           } >> $GITHUB_ENV
 
-          # --- derive safe folder/branch and export them ---
-          SAFE_FAMILY=$(echo "${{ steps.fields.outputs.family }}" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
-          SAFE_VERSION=$(echo "${{ steps.fields.outputs.version }}" | tr -cd 'a-zA-Z0-9-')
+          # ----- sanitize folder/branch parts -----
+          SAFE_FAMILY=$(printf '%s' "${{ steps.fields.outputs.family }}" \
+            | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-\n' | tr -d '\r\n')
+          SAFE_VERSION=$(printf '%s' "${{ steps.fields.outputs.version }}" \
+            | tr -cd 'A-Za-z0-9-\n' | tr -d '\r\n')
 
-          # one branch per Epic
-          echo "BRANCH=spec/${EPIC}" >> "$GITHUB_ENV"
-          echo "DIR=_specs/${SAFE_FAMILY}/${SAFE_VERSION}"   >> "$GITHUB_ENV"
+          # Epic must be available *now* (not only via $GITHUB_ENV)
+          EPIC_RAW="${{ steps.fields.outputs.epic }}"
+          EPIC=$(printf '%s' "$EPIC_RAW" | tr -d '\r\n ')
+
+          # Validate Epic and guard against empties
+          if ! printf '%s' "$EPIC" | grep -Eq '^MXOP-[0-9]{4}$'; then
+            echo "::error::Invalid Jira Epic ID '$EPIC_RAW' (expected MXOP-1234)"
+            exit 1
+          fi
+          [ -n "$SAFE_FAMILY" ] || { echo "::error::Parsed family is empty"; exit 1; }
+          [ -n "$SAFE_VERSION" ] || { echo "::error::Parsed version is empty"; exit 1; }
+
+          # One branch per Epic
+          BRANCH="spec/${EPIC}"
+          DIR="_specs/${SAFE_FAMILY}/${SAFE_VERSION}"
+
+          # Export for later steps
+          {
+            echo "EPIC=$EPIC"
+            echo "BRANCH=$BRANCH"
+            echo "DIR=$DIR"
+          } >> "$GITHUB_ENV"
+
+          echo "Using BRANCH='$BRANCH' and DIR='$DIR'"
 
       - name: Verify jq is available
         run: jq --version
@@ -523,6 +539,12 @@ jobs:
           touch "$DIR/assets/.gitkeep"
 
           git add "$DIR"
+
+      - name: Show branch/debug
+        run: |
+          echo "BRANCH=${BRANCH}"
+          echo "DIR=${DIR}"
+          ls -la "${DIR}" || true
 
       - name: Create draft PR
         if: steps.guard.outputs.ok == 'true'
