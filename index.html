@@ -69,9 +69,9 @@ title: Home
     {% for s in all_sorted %}
     <tr data-status="{{ s.status | downcase }}">
       <td data-label="Epic">
-        {%- if r.epic -%}
+        {%- if s.epic -%}
         {%- if site.jira and site.jira.base_url -%}
-        <a href="{{ site.jira.base_url }}/{{ r.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
+        <a href="{{ site.jira.base_url }}/{{ s.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
         {%- else -%}
         {{ s.epic }}
         {%- endif -%}
