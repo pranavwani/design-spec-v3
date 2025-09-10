@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "pr": 41,
+    "pr_title": "[Spec] sse (scaffold)",
+    "pr_url": "https://github.com/pranavwani/design-spec-v1/pull/41",
+    "updated_at": "2025-09-10T15:12:49Z",
+    "author": "github-actions[bot]",
+    "dir": "_specs/sse/v1",
+    "family": "sse",
+    "version": "v1",
+    "title": "sse",
+    "owner": "@pranavwani",
+    "epic": "MXOP-1111",
+    "status": "in-progress"
+  }
+]
