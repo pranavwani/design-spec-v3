@@ -1,10 +1,20 @@
-title: Voltmx Design Specs
-description: Design specifications for Voltmx
-markdown: kramdown
-theme: null
-jira:
-  base_url: https://hclsw-jiracentral.atlassian.net/browse
+# add/merge these keys
 collections:
   specs:
     output: true
     permalink: /specs/:path/
+  draft_specs:
+    output: true
+    permalink: /drafts/:path/
+
+# sensible defaults for draft pages
+defaults:
+  - scope: { path: "_draft_specs", type: "draft_specs" }
+    values:
+      layout: spec
+      nav_title: "Overview"
+      nav_order: 0
+
+# optional: Jira base for Epic links
+jira:
+  base_url: https://your-org.atlassian.net/browse
