@@ -3,79 +3,73 @@ layout: base
 ---
 
 {%- comment -%}
-Determine which collection this page belongs to:
-- "specs" (main) or "draft_specs" (draft pages materialized from PRs)
-{%- endcomment -%}
-{%- assign col_name = page.collection | default: 'specs' -%}
-{%- assign col = col_name == 'draft_specs' | ternary: site.draft_specs, site.specs -%}
-
-{%- comment -%}
-Space bookkeeping:
-- root: URL root (/specs/<family>/<version>/ or /drafts/<family>/<version>/)
-- space_index: index.md page for this space (source of canonical metadata)
-- space_dir: folder path for this space on disk (…/<family>/<version>/)
+Compute the space root and find the space index page.
+Works for both /specs/... and /drafts/... because we use the page’s collection.
 {%- endcomment -%}
 {%- assign root = page.url | replace: '/index.html','/' -%}
-{%- assign space_index = col | where: "url", root | first -%}
+{%- assign col  = page.collection | default: 'specs' -%}
+{%- assign coll = site[col] | default: site.specs -%}
+{%- assign space_index = coll | where: "url", root | first -%}
 {%- assign meta = space_index | default: page -%}
-
-{%- assign parts  = page.path | split:'/' -%}
-{%- assign length = parts.size | minus: 1 -%}
-{%- assign space_dir = parts | slice: 0, length | join:'/' | append:'/' -%}
 
 <header class="spec-header">
   <a class="back" href="{{ '/' | relative_url }}">← Back</a>
-  <h1 class="spec-heading">{{ meta.title | default: page.title }}</h1>
+  <h1 class="spec-heading">{{ page.title }}</h1>
   <div class="spec-header-right">
     {%- if meta.epic -%}
       {%- assign _epic = meta.epic | strip -%}
       {%- if site.jira and site.jira.base_url -%}
-        <a class="pill pill--muted" href="{{ site.jira.base_url | append: '/' | append: _epic }}" target="_blank" rel="noopener">Epic {{ _epic }}</a>
+        <a class="pill pill--muted" href="{{ site.jira.base_url | append: '/' | append: _epic }}" target="_blank" rel="noopener">
+          Epic {{ _epic }}
+        </a>
       {%- else -%}
         <span class="pill pill--muted">Epic {{ _epic }}</span>
       {%- endif -%}
     {%- endif -%}
-
-    {%- assign spec_ver = meta.spec_version | default: meta.version -%}
-    {%- if spec_ver -%}<span class="pill">Spec {{ spec_ver }}</span>{%- endif -%}
-    {%- if meta.stage -%}<span class="pill pill--muted">{{ meta.stage | upcase }}</span>{%- endif -%}
-    {%- if meta.status -%}<span class="pill pill--{{ meta.status | downcase }}">{{ meta.status | capitalize }}</span>{%- endif -%}
-    {%- if meta.updated_at -%}<span class="pill pill--muted">Updated {{ meta.updated_at }}</span>{%- endif -%}
-
+    {%- if meta.status -%}
+      <span class="pill pill--{{ meta.status | downcase }}">{{ meta.status | capitalize }}</span>
+    {%- endif -%}
+    {%- if meta.updated_at -%}
+      <span class="pill pill--muted">Updated {{ meta.updated_at }}</span>
+    {%- endif -%}
     {%- if meta.owner -%}
       {%- assign _owner = meta.owner | strip -%}
       {%- if _owner | slice: 0, 1 == '@' -%}
         {%- assign _handle = _owner | remove: '@' -%}
-        <a class="pill pill--muted" href="https://github.com/{{ _handle | uri_escape }}" target="_blank" rel="noopener" title="Open {{ _owner }} on GitHub">Owner {{ _owner }}</a>
+        <a class="pill pill--muted" href="https://github.com/{{ _handle | uri_escape }}" target="_blank" rel="noopener" title="Open {{ _owner }} on GitHub">
+          Owner {{ _owner }}
+        </a>
       {%- else -%}
         <span class="pill">Owner {{ _owner }}</span>
       {%- endif -%}
     {%- endif -%}
-
-    {%- if meta.team -%}<span class="pill">Team {{ meta.team }}</span>{%- endif -%}
-    {%- if meta.created_at -%}<span class="pill pill--muted">Created {{ meta.created_at }}</span>{%- endif -%}
-    {%- if meta.pr_url and meta.pr -%}
-      <a class="pill pill--muted" href="{{ meta.pr_url }}" target="_blank" rel="noopener">PR #{{ meta.pr }}</a>
+    {%- if meta.team -%}
+      <span class="pill">Team {{ meta.team }}</span>
+    {%- endif -%}
+    {%- if meta.created_at -%}
+      <span class="pill pill--muted">Created {{ meta.created_at }}</span>
     {%- endif -%}
   </div>
 </header>
 
 {%- comment -%}
-Build sidebar: only top-level docs in this space (index.md + first-level .md files).
-Use nav_title/nav_order when present; otherwise map sensible defaults.
+Collect files that belong to this space, keep only top-level (index + first-level pages),
+and build a normalized list with label/order (front-matter wins; otherwise map/fallback).
 {%- endcomment -%}
-{%- assign docs_in_space = col | where_exp:'d', "d.path contains space_dir" -%}
+{%- assign space_dir = page.path | replace: '/index.md','/' -%}
+{%- assign docs = coll | where_exp:'d', "d.path contains space_dir" -%}
+{%- assign docs = docs | sort: 'nav_order' -%}
 
 {%- assign normalized = "" | split: "" -%}
 {%- assign order_map = "overview:0|hld:10|lld:20|data-model:25|api:30|ux:40|rollout-ops:50|qa-test:60" | split:"|" -%}
 
-{%- for d in docs_in_space -%}
-  {%- assign rel   = d.path | remove_first: space_dir -%}
-  {%- assign depth = rel | split:'/' | size -%}
-  {%- if depth > 1 -%}{% continue %}{%- endif -%} {%- comment -%} skip nested folders/assets {%- endcomment -%}
+{%- for d in docs -%}
+  {%- assign depth = d.path | remove_first: space_dir | split:'/' | size -%}
+  {%- if depth > 1 -%}{% continue %}{%- endif -%}
 
-  {%- assign href  = d.url | replace: '/index.html','/' -%}
-  {%- assign slug  = rel | replace:'index.md','overview' | replace:'.md','' | downcase -%}
+  {%- assign href = d.url | replace: '/index.html','/' -%}
+  {%- assign rel = d.path | remove_first: space_dir -%}
+  {%- assign slug = rel | replace: 'index.md','overview' | replace: '.md','' | downcase -%}
 
   {%- assign label = d.nav_title | default: d.title -%}
   {%- if label == nil or label == "" -%}
@@ -88,7 +82,8 @@ Use nav_title/nav_order when present; otherwise map sensible defaults.
       {%- when 'ux' -%}{%- assign label = 'UX' -%}
       {%- when 'rollout-ops' -%}{%- assign label = 'Rollout & Ops' -%}
       {%- when 'qa-test' -%}{%- assign label = 'QA / Test Plan' -%}
-      {%- else -%}{%- assign label = slug | replace:'-',' ' | capitalize -%}
+      {%- else -%}
+        {%- assign label = slug | replace:'-',' ' | capitalize -%}
     {%- endcase -%}
   {%- endif -%}
 
@@ -103,61 +98,33 @@ Use nav_title/nav_order when present; otherwise map sensible defaults.
     {%- assign order = mapped -%}
   {%- endif -%}
 
-  {%- assign is_active = page.url == d.url -%}
-  {%- assign item = '{"href":"__H__","label":"__L__","order":__O__,"active":__A__}'
-      | replace:'__H__', href
-      | replace:'__L__', label
-      | replace:'__O__', order
-      | replace:'__A__', is_active -%}
+  {%- assign active = page.url == d.url -%}
+  {%- assign item = '{"href":"__H__","label":"__L__","order":__O__,"active":__A__}' 
+      | replace:'__H__', href 
+      | replace:'__L__', label 
+      | replace:'__O__', order 
+      | replace:'__A__', active -%}
   {%- assign normalized = normalized | push: item -%}
 {%- endfor -%}
 
 {%- assign sorted = normalized | sort: 'order' -%}
 
-{%- comment -%}
-Version switcher: other published versions of this family (index pages only)
-{%- endcomment -%}
-{%- assign family_key   = meta.family | default: page.family -%}
-{%- assign family_roots = site.specs | where: 'family', family_key | where_exp:'d', "d.path contains '/index.md'" | sort_natural: 'version' -%}
-
-{%- assign status_lc = meta.status | downcase -%}
-{%- if status_lc == "deprecated" or status_lc == "in-progress" -%}
-  <div class="callout {% if status_lc == 'deprecated' %}danger{% else %}warn{% endif %}" role="status" aria-live="polite">
-    <h3>{% if status_lc == 'deprecated' %}Deprecated{% else %}Draft{% endif %}</h3>
-    <p>
-      {% if status_lc == 'deprecated' %}
-        This spec is no longer maintained.
-      {% else %}
-        This spec is a work-in-progress. Details may change.
-      {% endif %}
-    </p>
-    <p class="small">
-      {% if meta.updated_at %}Last updated: <strong>{{ meta.updated_at }}</strong>.{% endif %}
-      {% if meta.deprecated_at and status_lc == 'deprecated' %} Deprecated on <strong>{{ meta.deprecated_at }}</strong>.{% endif %}
-      {% if meta.superseded_by and status_lc == 'deprecated' %} Superseded by <a href="{{ meta.superseded_by | relative_url }}">this spec</a>.{% endif %}
-    </p>
-  </div>
-{%- endif -%}
-
 <div class="spec-grid">
   <aside class="sidebar">
-    <div class="version-switcher">
-      <span>Version:</span>
-      {%- for v in family_roots -%}
-        {%- assign href = v.url | replace:'/index.html','/' -%}
-        <a class="chip {% if href == root %}active{% endif %}" href="{{ href | relative_url }}">{{ v.version }}</a>
-      {%- endfor -%}
-    </div>
-
     <nav class="sidebar-nav">
       <ul class="side-links">
-        {%- for json in sorted -%}
-          {%- assign obj = json | parse_json -%}
+        {%- for d in docs -%}
+          {%- assign rel = d.path | remove_first: space_dir -%}
+          {%- assign depth = rel | split:'/' | size -%}
+          {%- if depth > 1 -%}{% continue %}{%- endif -%}
+
+          {%- assign href = d.url | replace: '/index.html','/' -%}
+          {%- assign is_active = page.url == d.url -%}
           <li>
-            <a href="{{ obj.href | relative_url }}"
-               class="{% if obj.active %}active{% endif %}"
-               {% if obj.active %}aria-current="page"{% endif %}>
-              {{ obj.label }}
+            <a href="{{ href | relative_url }}"
+               class="{% if is_active %}active{% endif %}"
+               {% if is_active %}aria-current="page"{% endif %}>
+              {{ d.nav_title | default: d.title | default: 'Untitled' }}
             </a>
           </li>
         {%- endfor -%}
@@ -172,65 +139,68 @@ Version switcher: other published versions of this family (index pages only)
   </main>
 </div>
 
+{%- comment -%}
+PJAX-lite: intercept leftbar clicks, fetch target page, swap only #spec-content.
+Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
+{%- endcomment -%}
 <script>
-/* PJAX-lite: keep header + leftbar static; swap only the right pane */
-(function () {
-  const containerSel = '#spec-content';
-  const navSel = '.sidebar-nav a, .side-links a';
+  (function () {
+    const containerSel = '#spec-content';
+    const navSel = '.sidebar-nav a, .side-links a';
 
-  function sameOrigin(href) {
-    try { return new URL(href, location.href).origin === location.origin; }
-    catch { return false; }
-  }
-
-  function setActive(absHref) {
-    document.querySelectorAll(navSel).forEach(a => {
-      const match = new URL(a.href, location.href).href === absHref;
-      a.classList.toggle('active', match);
-      if (match) a.setAttribute('aria-current', 'page');
-      else a.removeAttribute('aria-current');
-    });
-  }
-
-  async function load(href, { push = true, scroll = true } = {}) {
-    const abs = new URL(href, location.href).href;
-    const res = await fetch(abs, { headers: { 'X-PJAX': '1' }});
-    if (!res.ok) return location.assign(abs);
-
-    const html = await res.text();
-    const doc  = new DOMParser().parseFromString(html, 'text/html');
-    const next = doc.querySelector(containerSel);
-    const curr = document.querySelector(containerSel);
-    if (!next || !curr) return location.assign(abs);
-
-    curr.style.opacity = '0.35';
-    curr.replaceWith(next);
-    next.style.opacity = '1';
-
-    if (doc.title) document.title = doc.title;
-    setActive(abs);
-    if (scroll) next.scrollIntoView({ block: 'start' });
-    if (push) history.pushState({ pjax: true, url: abs }, '', abs);
-  }
-
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest(navSel);
-    if (!a) return;
-    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-
-    const href = a.getAttribute('href');
-    if (!href || href.startsWith('#') || !sameOrigin(href)) return;
-
-    e.preventDefault();
-    load(href).catch(() => location.assign(href));
-  });
-
-  window.addEventListener('popstate', (e) => {
-    if (e.state && e.state.pjax && e.state.url) {
-      load(e.state.url, { push: false }).catch(() => location.reload());
+    function sameOrigin(href) {
+      try { return new URL(href, location.href).origin === location.origin; }
+      catch { return false; }
     }
-  });
 
-  setActive(location.href);
-})();
+    function setActive(absHref) {
+      document.querySelectorAll(navSel).forEach(a => {
+        const match = new URL(a.href, location.href).href === absHref;
+        a.classList.toggle('active', match);
+        if (match) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      });
+    }
+
+    async function load(href, { push = true, scroll = true } = {}) {
+      const abs = new URL(href, location.href).href;
+      const res = await fetch(abs, { headers: { 'X-PJAX': '1' } });
+      if (!res.ok) throw new Error('Fetch failed: ' + abs);
+
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const next = doc.querySelector(containerSel);
+      const curr = document.querySelector(containerSel);
+      if (!next || !curr) return location.assign(abs);
+
+      curr.style.opacity = '0.35';
+      curr.replaceWith(next);
+      next.style.opacity = '1';
+
+      if (doc.title) document.title = doc.title;
+      setActive(abs);
+      if (scroll) next.scrollIntoView({ block: 'start' });
+      if (push) history.pushState({ pjax: true, url: abs }, '', abs);
+    }
+
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest(navSel);
+      if (!a) return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      const href = a.getAttribute('href');
+      if (!href || href.startsWith('#') || !sameOrigin(href)) return;
+
+      e.preventDefault();
+      load(href).catch(() => location.assign(href));
+    });
+
+    window.addEventListener('popstate', (e) => {
+      if (e.state && e.state.pjax && e.state.url) {
+        load(e.state.url, { push: false }).catch(() => location.reload());
+      }
+    });
+
+    setActive(location.href);
+  })();
 </script>
