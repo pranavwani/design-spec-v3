@@ -110,6 +110,8 @@ jobs:
           echo "OWNER=${{ steps.fields.outputs.owner }}"     >> $GITHUB_ENV
           echo "ISSUE_NUMBER=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
           echo "TODAY=$(date +%F)" >> $GITHUB_ENV
+          echo "STAGE=dev"         >> $GITHUB_ENV
+          echo "SPEC_VERSION=1.0.0" >> $GITHUB_ENV
 
           # ----- multiline envs -----
           {
@@ -244,10 +246,12 @@ jobs:
           version: __VERSION__
           title: __TITLE__
           status: in-progress
+          stage: __STAGE__
+          spec_version: "__SPEC_VERSION__"
           owner: "__OWNER__"
           team: ""
           created_at: __TODAY__
-          updated_at: __TODAY__
+          updated_at:
           tags: []
           changelog:
             - date: __TODAY__
@@ -274,6 +278,8 @@ jobs:
             -e "s|__FAMILY__|$(esc "$FAMILY")|g" \
             -e "s|__VERSION__|$(esc "$VERSION")|g" \
             -e "s|__TITLE__|$(esc "$TITLE")|g" \
+            -e "s|__STAGE__|$(esc "$STAGE")|g" \
+            -e "s|__SPEC_VERSION__|$(esc "$SPEC_VERSION")|g" \
             -e "s|__OWNER__|$(esc "$OWNER")|g" \
             -e "s|__TODAY__|$(esc "$TODAY")|g" \
             -e "s|__ISSUE__|$(esc "$ISSUE_NUMBER")|g" \
@@ -557,6 +563,8 @@ jobs:
             Closes #${{ env.ISSUE_NUMBER }}
 
             **Epic:** ${{ vars.JIRA_BASE && format('[{0}]({1}/{0})', env.EPIC, vars.JIRA_BASE) || env.EPIC }}
+            **Stage:** ${{ env.STAGE }}
+            **Spec version (initial):** ${{ env.SPEC_VERSION }}
 
             Scaffolds `_specs/${{ env.FAMILY }}/${{ env.VERSION }}/` with:
             - `index.md` (status: in-progress)

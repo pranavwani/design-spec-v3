@@ -1,0 +1,151 @@
+name: Sync Draft Specs to draft-specs branch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+  # Run for PRs from forks with base repo token
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review, closed]
+  # And same-repo PRs (harmless duplication; concurrency will serialize)
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review, closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: draft-specs-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # Always work off the default branch, since we commit there
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Prepare draft-specs branch
+        run: |
+          set -e
+          DEF="${{ github.event.repository.default_branch }}"
+          # Create or reset local branch to default branch tip
+          git fetch origin "$DEF" --depth=1
+          if git rev-parse --verify origin/draft-specs >/dev/null 2>&1; then
+            git fetch origin draft-specs --depth=1 || true
+          fi
+          git checkout -B draft-specs "origin/$DEF"
+          # Start from the default branch content (fresh rebuild)
+          git reset --hard "origin/$DEF"
+          rm -rf _draft_specs
+          mkdir -p _draft_specs
+
+      - name: Pull open spec PRs and materialize into _draft_specs (PR-scoped)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner, repo = context.repo.repo;
+            const fs = require('fs'); const path = require('path');
+
+            // Helper: write a file, ensuring parent dirs
+            function writeFileSafe(p, buf) {
+              fs.mkdirSync(path.dirname(p), { recursive: true });
+              fs.writeFileSync(p, buf);
+            }
+
+            // List OPEN PRs
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', per_page: 100
+            });
+
+            for (const pr of prs) {
+              const labels = (pr.labels || []).map(l => String(l.name || '').toLowerCase());
+              // Only consider design-spec PRs
+              if (!labels.some(n => /^spec:(proposal|update)$/.test(n))) continue;
+
+              // Files touched by PR
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner, repo, pull_number: pr.number, per_page: 100
+              });
+
+              // Unique spec "spaces" (_specs/<family>/<major>)
+              const spaces = [...new Set(
+                files
+                  .map(f => f.filename)
+                  .filter(p => p.startsWith('_specs/'))
+                  .map(p => p.replace(/^(_specs\/[^/]+\/[^/]+)\/.*/, '$1'))
+              )];
+
+              for (const space of spaces) {
+                const m = space.match(/^_specs\/([^/]+)\/([^/]+)/);
+                if (!m) continue;
+                const family = m[1], major = m[2];
+
+                // Collect all files under this space from the PR
+                const spaceFiles = files
+                  .map(f => f.filename)
+                  .filter(p => p.startsWith(space + '/'));
+
+                for (const pth of spaceFiles) {
+                  try {
+                    const { data: blob } = await github.rest.repos.getContent({
+                      owner, repo, path: pth, ref: pr.head.sha
+                    });
+                    const buf = Buffer.from(blob.content, 'base64');
+                    let text = buf.toString('utf8');
+
+                    // Inject PR metadata into index.md front-matter (non-destructive)
+                    if (pth.endsWith('/index.md')) {
+                      const parts = text.split(/^---\s*$/m);
+                      if (parts.length >= 3) {
+                        const fm = parts[1];
+                        const addon =
+                          `\npr: ${pr.number}\npr_url: ${pr.html_url}\n` +
+                          `pr_updated_at: ${pr.updated_at}\n`;
+                        if (!/^pr:\s/m.test(fm)) {
+                          parts[1] = fm + addon;
+                          text = parts.join('---\n');
+                        }
+                      }
+                    }
+
+                    // PR-scoped output path:
+                    // _draft_specs/<family>/<major>/pr-<num>/... (mirror subpaths)
+                    const rel = pth.replace(/^_specs\//, '');
+                    const out = path.join(process.cwd(), '_draft_specs', family, major, `pr-${pr.number}`, rel.replace(/^[^/]+\/[^/]+\//, ''));
+                    writeFileSafe(out, text);
+                  } catch (e) {
+                    core.warning(`Could not fetch ${pth} from PR #${pr.number}: ${e.message}`);
+                  }
+                }
+              }
+            }
+
+      - name: Commit & push (race-safe)
+        run: |
+          set -e
+          git config user.name  "spec-bot"
+          git config user.email "spec-bot@users.noreply.github.com"
+          git add -A _draft_specs
+
+          # Only commit if there are staged changes
+          if git diff --cached --quiet; then
+            echo "No draft changes."
+          else
+            git commit -m "chore(drafts): sync open PR specs into _draft_specs (PR-scoped)"
+          fi
+
+          # Push with retries to defeat occasional ref races
+          for i in 1 2 3; do
+            if git push --force-with-lease origin draft-specs; then
+              echo "Pushed draft-specs (attempt $i)"; break
+            fi
+            echo "Retrying push ($i)..."
+            git fetch origin draft-specs --depth=1 || true
+            sleep 2
+          done

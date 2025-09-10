@@ -1,0 +1,167 @@
+name: Auto update spec from issue
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  update:
+    if: >
+      github.event.issue.state == 'open' &&
+      (
+        contains(github.event.issue.labels.*.name, 'spec:update') ||
+        (github.event.action == 'labeled' && github.event.label.name == 'spec:update')
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Parse the issue form and validate spec_ref, bump, promote
+      - name: Parse update issue fields
+        id: fields
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || "";
+
+            function get(label){
+              // matches "**Label**\nvalue" or "### Label\nvalue" until next heading/label or end
+              const re = new RegExp(`(?:\\*\\*|###)\\s*${label}[^\\n]*\\n([\\s\\S]*?)(?=\\n(?:\\*\\*|###)\\s*|$)`, 'i');
+              const m = body.match(re);
+              return m ? m[1].trim() : "";
+            }
+            const specRef = get('Which spec are you updating\\?');
+            const bumpSel  = get('Semantic version bump').toLowerCase();
+            const promoSel = get('Stage change').toLowerCase();
+            const motivation = get('Why is this update needed\\?');
+            const scope = get('Scope of changes');
+            const risks = get('Risks or considerations');
+            const owner = get('Update owner');
+
+            // spec_ref must be "<family> vN"
+            const m = specRef.match(/^\s*([a-z0-9-]+)\s+v(\d+)\s*$/i);
+            if (!m) core.setFailed(`Could not parse "Which spec are you updating?" (got: "${specRef}"). Use "<family> vN".`);
+            const family = m ? m[1].toLowerCase() : '';
+            const major  = m ? `v${m[2]}` : '';
+
+            // normalize bump
+            let bump = 'patch';
+            if (/major/.test(bumpSel)) bump = 'major';
+            else if (/minor/.test(bumpSel)) bump = 'minor';
+
+            // normalize promote
+            let promote = '';
+            if (/promote:stg/.test(promoSel)) promote = 'stg';
+            else if (/promote:prod/.test(promoSel)) promote = 'prod';
+
+            core.setOutput('family', family);
+            core.setOutput('major', major);
+            core.setOutput('bump', bump);
+            core.setOutput('promote', promote);
+            core.setOutput('motivation', motivation);
+            core.setOutput('scope', scope);
+            core.setOutput('risks', risks);
+            core.setOutput('owner', owner || "");
+            core.setOutput('issue_number', String(context.payload.issue.number));
+
+      - name: Validate target spec exists on default branch & read Epic
+        id: target
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const family = '${{ steps.fields.outputs.family }}';
+            const major  = '${{ steps.fields.outputs.major }}';
+            const path = `_specs/${family}/${major}/index.md`;
+            const owner = context.repo.owner, repo = context.repo.repo;
+            let epic = '';
+            try {
+              const { data:file } = await github.rest.repos.getContent({ owner, repo, path, ref: context.payload.repository.default_branch });
+              const src = Buffer.from(file.content, 'base64').toString('utf8');
+              const parts = src.split(/^---\s*$/m);
+              if (parts.length >= 3) {
+                const yaml = parts[1];
+                const m = yaml.match(/^epic:\s*(.+)$/mi);
+                epic = m ? m[1].trim().replace(/^"(.*)"$/, '$1') : '';
+              }
+            } catch (e) {
+              core.setFailed(`Spec folder not found: _specs/${family}/${major}. Did you mean a different family/major?`);
+            }
+            core.setOutput('epic', epic);
+
+      - name: Compute env & write .spec-meta.yml
+        run: |
+          set -euo pipefail
+          echo "FAMILY=${{ steps.fields.outputs.family }}" >> $GITHUB_ENV
+          echo "MAJOR=${{ steps.fields.outputs.major }}"   >> $GITHUB_ENV
+          echo "BUMP=${{ steps.fields.outputs.bump }}"     >> $GITHUB_ENV
+          echo "PROMO=${{ steps.fields.outputs.promote }}" >> $GITHUB_ENV
+          echo "OWNER=${{ steps.fields.outputs.owner }}"   >> $GITHUB_ENV
+          echo "EPIC=${{ steps.target.outputs.epic }}"     >> $GITHUB_ENV
+          echo "ISSUE=${{ steps.fields.outputs.issue_number }}" >> $GITHUB_ENV
+          echo "TODAY=$(date -u +%F)" >> $GITHUB_ENV
+          DIR="_specs/${{ steps.fields.outputs.family }}/${{ steps.fields.outputs.major }}"
+          echo "DIR=$DIR" >> $GITHUB_ENV
+
+          BRANCH="upd/${{ steps.fields.outputs.family }}-${{ steps.fields.outputs.major }}-${{ steps.fields.outputs.issue_number }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+          mkdir -p "$DIR"
+          cat > "$DIR/.spec-meta.yml" <<EOF
+          # Auto-generated by auto-update-from-issue
+          bump: ${BUMP}
+          promote: ${PROMO}
+          source_issue: ${ISSUE}
+          owner: "${OWNER}"
+          epic: "${EPIC}"
+          updated_at: ${TODAY}
+          EOF
+
+          git add "$DIR/.spec-meta.yml"
+
+      - name: Create draft PR
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ env.BRANCH }}
+          title: "[Update] ${{ env.FAMILY }} ${{ env.MAJOR }} — ${{ github.event.issue.title }}"
+          body: |
+            Closes #${{ env.ISSUE }}
+
+            **Spec:** `_specs/${{ env.FAMILY }}/${{ env.MAJOR }}/`  
+            **Epic:** ${{ env.EPIC }}
+
+            **Bump:** `${{ env.BUMP }}` · **Promotion:** `${{ env.PROMO || '(none)' }}`
+
+            **Motivation**
+            > ${{ steps.fields.outputs.motivation }}
+
+            **Scope**
+            ```
+            ${{ steps.fields.outputs.scope }}
+            ```
+
+            **Risks**
+            > ${{ steps.fields.outputs.risks }}
+
+            This PR includes `.spec-meta.yml` which the post-merge workflow will use to bump **spec_version** and apply **stage** promotion. Please commit the actual content changes to this branch.
+
+          draft: true
+          labels: spec:update
+
+      - name: Comment PR link on the issue
+        if: steps.cpr.outputs.pull-request-url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number("${{ steps.fields.outputs.issue_number }}"),
+              body: `🚀 Draft PR created: ${{ steps.cpr.outputs.pull-request-url }}`
+            });

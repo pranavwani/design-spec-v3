@@ -23,7 +23,7 @@ body:
     id: title
     attributes:
       label: "Spec title"
-      placeholder: "Flutter SDK"
+      placeholder: "spec title"
       description: "Short, human-readable title."
     validations:
       required: true
@@ -33,7 +33,7 @@ body:
     attributes:
       label: "Spec family (folder key)"
       description: "Lowercase, hyphenated. This becomes the folder name under `_specs/`."
-      placeholder: "flutter-sdk"
+      placeholder: "spec-dir-name"
     validations:
       required: true
 

@@ -1,10 +1,9 @@
-name: Spec Post-merge Update
+name: Spec Post-merge Update (bump, stage, status, tag)
 
 on:
   pull_request:
     types: [closed]
-    paths:
-      - "_specs/**"
+    paths: ["_specs/**"]
 
 permissions:
   contents: write
@@ -22,17 +21,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Compute TODAY as YYYY-MM-DD using the event's merged_at timestamp if available
+      # TODAY from merged_at if available (UTC)
       - name: Compute TODAY (YYYY-MM-DD)
         run: |
           set -e
-          # merged_at looks like: 2025-09-07T11:59:12Z
           TS=$(jq -r '.pull_request.merged_at // empty' "$GITHUB_EVENT_PATH" || true)
-          if [ -n "$TS" ]; then
-            TODAY="${TS%%T*}"
-          else
-            TODAY="$(date -u +%F)"
-          fi
+          if [ -n "$TS" ]; then TODAY="${TS%%T*}"; else TODAY="$(date -u +%F)"; fi
           echo "TODAY=$TODAY" >> "$GITHUB_ENV"
           echo "TODAY=$TODAY"
 
@@ -46,33 +40,46 @@ jobs:
         id: dirs
         uses: actions/github-script@v7
         with:
-            script: |
-                const pr = context.payload.pull_request;
-                // List all files changed in the PR
-                const files = await github.paginate(github.rest.pulls.listFiles, {
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: pr.number,
-                    per_page: 100
-                });
+          script: |
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
 
                 // Keep only _specs/** paths and reduce to _specs/<family>/<version> dirs
-                const dirs = [...new Set(
-                    files
-                    .map(f => f.filename)
-                    .filter(p => p.startsWith('_specs/'))
-                    .map(p => p.replace(/^(_specs\/[^/]+\/[^/]+)\/.*/, '$1'))
-                )];
+            const dirs = [...new Set(
+              files
+                .map(f => f.filename)
+                .filter(p => p.startsWith('_specs/'))
+                .map(p => p.replace(/^(_specs\/[^/]+\/[^/]+)\/.*/, '$1'))
+            )];
 
-                core.info(`Changed spec dirs:\n${dirs.join('\n') || '(none)'}`);
-                core.setOutput('dirs', dirs.join('\n'));
+            core.info(`Changed spec dirs:\n${dirs.join('\n') || '(none)'}`);
+            core.setOutput('dirs', dirs.join('\n'));
 
-      - name: Determine label-based status policy
+      # Fallback policy from labels (used only if .spec-meta.yml not present in a space)
+      - name: Determine label-based defaults
         id: policy
         run: |
           set -e
           labels='${{ toJson(github.event.pull_request.labels) }}'
-          # Default: empty TARGET means "auto-activate if currently in-progress"
+
+          bump=
+          echo "$labels" | grep -qi '"name":"bump:major"' && bump=major
+          echo "$labels" | grep -qi '"name":"bump:minor"' && bump=${bump:-minor}
+          echo "$labels" | grep -qi '"name":"bump:patch"' && bump=${bump:-patch}
+          [ -z "$bump" ] && bump=patch  # default bump if nothing specified
+          echo "bump=$bump" >> $GITHUB_OUTPUT
+
+          promo=
+          echo "$labels" | grep -qi '"name":"promote:stg"'  && promo=stg
+          echo "$labels" | grep -qi '"name":"promote:prod"' && promo=prod
+          echo "promo=$promo" >> $GITHUB_OUTPUT
+
+          # Status target (optional override)
           if echo "$labels" | grep -qi '"name":"spec:deprecated"'; then
             echo "TARGET=deprecated" >> $GITHUB_ENV
           elif echo "$labels" | grep -qi '"name":"spec:activate"'; then
@@ -83,7 +90,7 @@ jobs:
             echo "TARGET=" >> $GITHUB_ENV
           fi
 
-      - name: Update index.md in affected spaces
+      - name: Update spec files (bump spec_version, set stage/status, changelog)
         if: steps.dirs.outputs.dirs != ''
         run: |
           set -euo pipefail
@@ -91,16 +98,69 @@ jobs:
 
           while IFS= read -r dir; do
             f="$dir/index.md"
-            [ -f "$f" ] || continue
+            [ -f "$f" ] || { echo "Skip: $f not found"; continue; }
 
-            # --- split front-matter/body (safe awk) ---
+            # --- split front matter / body ---
             awk 'BEGIN{fm=0} /^---[[:space:]]*$/{fm++; next} fm==1{print}' "$f" > /tmp/fm.yml
             awk 'BEGIN{fm=0} /^---[[:space:]]*$/{fm++; next} fm<2{next} {print}' "$f" > /tmp/body.md
 
-            # current status (yq v4)
-            cur_status=$(yq e '.status // ""' /tmp/fm.yml)
+            # read current values
+            cur_status=$(yq e -r '.status // ""'            /tmp/fm.yml)
+            stage=$(yq      e -r '.stage // "dev"'          /tmp/fm.yml)
+            specv=$(yq      e -r '.spec_version // "1.0.0"' /tmp/fm.yml)
+            family=$(yq     e -r '.family // ""'            /tmp/fm.yml)
+            major=$(yq      e -r '.version // ""'           /tmp/fm.yml)
 
-            # decide new status
+            # resolve bump/promotion: .spec-meta.yml overrides label defaults
+            bump='${{ steps.policy.outputs.bump }}'
+            promo='${{ steps.policy.outputs.promo }}'
+            meta="$dir/.spec-meta.yml"
+            if [ -f "$meta" ]; then
+              mb=$(yq e -r '.bump // ""'    "$meta" || true)
+              mp=$(yq e -r '.promote // ""' "$meta" || true)
+              [ -n "$mb" ] && bump="$mb"
+              [ -n "$mp" ] && promo="$mp"
+            fi
+            echo "Space: $dir  bump=$bump  promo=${promo:-none}"
+
+            # --- POLICY GUARD: forbid non-patch bumps after stg/prod ---
+            case "$stage" in
+              dev)
+                : ;;  # anything goes
+              stg|prod)
+                if [ "$bump" != "patch" ]; then
+                  echo "::error file=$f::Non-patch bump ('$bump') is forbidden once stage is '$stage'. Use bump:patch, or move the work back to 'dev' (new major line if needed)."
+                  exit 1
+                fi
+                # (optional) promotion to prod must also be patch-only
+                if [ "$promo" = "prod" ] && [ "$bump" != "patch" ]; then
+                  echo "::error file=$f::Can only promote to 'prod' with a patch bump."
+                  exit 1
+                fi
+                ;;
+            esac
+            # --- end guard ---
+
+            # bump semver
+            IFS=. read -r MA MI PA <<<"$specv"
+            case "$bump" in
+              major) MA=$((MA+1)); MI=0; PA=0 ;;
+              minor) MI=$((MI+1)); PA=0 ;;
+              patch|*) PA=$((PA+1)) ;;
+            esac
+            newv="${MA}.${MI}.${PA}"
+
+            # stage promotion (only valid transitions)
+            newstage="$stage"
+            if [ -n "$promo" ]; then
+              if   [ "$stage" = "dev" ] && [ "$promo" = "stg" ]; then newstage="stg"
+              elif [ "$stage" = "stg" ] && [ "$promo" = "prod" ]; then newstage="prod"
+              else
+                echo "::error file=$f::Invalid promotion '$promo' from stage '$stage'"; exit 1
+              fi
+            fi
+
+            # status policy: label override, else auto in-progress -> active on first merge
             target="${TARGET:-}"
             new_status="$cur_status"
             if [ -n "$target" ]; then
@@ -109,26 +169,42 @@ jobs:
               [ "$cur_status" = "in-progress" ] && new_status="active"
             fi
 
-            # export vars so yq can read them via strenv()
-            NEW_STATUS="$new_status"
-            export TODAY NEW_STATUS CHANGE_TEXT
+            # write FM back
+            export TODAY CHANGE_TEXT
+            NEW_STATUS="$new_status"; NEW_STAGE="$newstage"; NEW_SPECV="$newv"
+            export NEW_STATUS NEW_STAGE NEW_SPECV
 
-            # --- yq v4 update (no --arg) ---
             yq e \
               '.updated_at = strenv(TODAY)
-              | .status = strenv(NEW_STATUS)
-              | .changelog = [{"date": strenv(TODAY), "text": strenv(CHANGE_TEXT)}] + (.changelog // [])' \
+               | .status = strenv(NEW_STATUS)
+               | .stage = strenv(NEW_STAGE)
+               | .spec_version = strenv(NEW_SPECV)
+               | .changelog = [{"date": strenv(TODAY), "text": strenv(CHANGE_TEXT)}] + (.changelog // [])' \
               /tmp/fm.yml > /tmp/fm.new.yml
 
-            # stitch back
             { echo '---'; cat /tmp/fm.new.yml; echo '---'; cat /tmp/body.md; } > "$f"
+            echo "Updated $f  → spec_version=$newv, stage=$newstage, status=$new_status"
 
-            echo "Updated $f  (status: $cur_status → $new_status)"
+            # if metadata file exists, neutralize it (prevent re-application on future PRs)
+            if [ -f "$meta" ]; then
+              rm -f "$meta"
+            fi
+
+            # record for tagging
+            echo "${family}|${major}|${newv}|${newstage}" >> /tmp/tags.txt
           done < <(printf '%s\n' "${{ steps.dirs.outputs.dirs }}")
 
           git config user.name  "spec-bot"
           git config user.email "spec-bot@users.noreply.github.com"
-          git add _specs
-          git commit -m "chore(spec): update status/updated_at after merge of #${PR_NUMBER}" || echo "Nothing to commit"
+          git add -A _specs
+          git commit -m "chore(spec): post-merge bump/stage/status for #${PR_NUMBER}" || echo "Nothing to commit"
           git push
-                
+
+          # create annotated tags for each updated space
+          if [ -f /tmp/tags.txt ]; then
+            while IFS='|' read -r family major newv st; do
+              tag="spec/${family}/${major}@${newv}-${st}"
+              git tag -a "$tag" -m "Spec ${family}/${major} ${newv} (${st}) after #${PR_NUMBER}: ${PR_TITLE}"
+              git push origin "$tag"
+            done < /tmp/tags.txt
+          fi
