@@ -1,20 +1,22 @@
-name: Publish site to common-specs (main + drafts overlay)
+name: Publish site (main + drafts overlay)
 
 on:
-  # Manual "Run workflow" button
   workflow_dispatch:
     inputs:
       ref:
-        description: "Base ref to stage instead of main (e.g., main or a tag)"
+        description: "Base ref to stage (usually main)"
         required: false
         default: "main"
-      force:
-        description: "Force a publish even if there are no diffs"
-        required: false
+      mirror_branch:
+        description: "Also mirror staged source to the 'common-specs' branch"
         type: boolean
+        required: false
+        default: true
+      force_deploy:
+        description: "Deploy even if no source diff detected"
+        type: boolean
+        required: false
         default: false
-
-  # Rebuild the published site whenever main changes site/spec files
   push:
     branches: [main]
     paths:
@@ -28,19 +30,18 @@ on:
       - "spec.html"
       - "style.css"
       - ".github/workflows/**"
-
-  # Keep drafts current as PRs are opened/updated/closed
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled, closed]
     paths:
       - "_specs/**"
-
-  # Safety net: refresh periodically
   schedule:
     - cron: "*/15 * * * *"
 
+# needed to write branch (optional mirror) and to deploy Pages via Actions
 permissions:
   contents: write
+  pages: write
+  id-token: write
   pull-requests: read
 
 concurrency:
@@ -50,133 +51,158 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
+    env:
+      BASE_REF: ${{ inputs.ref || 'main' }}
     steps:
       - name: Checkout base ref
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # default to main if no manual input provided
-          ref: ${{ inputs.ref != '' && inputs.ref || 'main' }}
+          ref: ${{ env.BASE_REF }}
 
-      - name: Stage current base ref into /tmp/site
+      - name: Stage current source into /tmp/site
         run: |
           set -e
           rm -rf /tmp/site && mkdir -p /tmp/site
           rsync -a --delete --exclude '.git' ./ /tmp/site/
-          # we'll rebuild drafts freshly; never carry over an old overlay
+          # We'll fill /tmp/site/_draft_specs next
           rm -rf /tmp/site/_draft_specs
 
       - name: Build _draft_specs overlay from open proposal PRs
-        id: build
+        id: build_drafts
         uses: actions/github-script@v7
         with:
           script: |
             const { execSync } = require('node:child_process');
-            const fs = require('fs');
-            const path = require('path');
+            const fs = require('fs'); const path = require('path');
 
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
+            const owner = context.repo.owner, repo = context.repo.repo;
 
-            // Collect all OPEN PRs
+            // Collect OPEN PRs that look like proposals (or marked in-progress)
             const prs = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: 'open', per_page: 100
             });
 
-            let copied = 0;
+            let overlayCount = 0;
             for (const pr of prs) {
-              // We only include proposal/in-progress specs
-              const hasWantedLabel = (pr.labels || []).some(l =>
-                /^(spec:proposal|in-progress)$/i.test((l.name || ''))
+              const hasWanted = (pr.labels || []).some(l =>
+                /^(spec:proposal|in-progress)$/i.test((l.name||''))
               );
-              if (!hasWantedLabel) continue;
+              if (!hasWanted) continue;
 
-              // Only keep PRs that touch _specs/**
               const files = await github.paginate(github.rest.pulls.listFiles, {
                 owner, repo, pull_number: pr.number, per_page: 100
               });
 
-              const specDirs = [...new Set(
-                files
-                  .map(f => f.filename)
-                  .filter(p => p.startsWith('_specs/'))
-                  .map(p => p.replace(/^(_specs\/[^/]+\/[^/]+)\/.*/, '$1'))
+              const dirs = [...new Set(
+                files.map(f => f.filename)
+                     .filter(p => p.startsWith('_specs/'))
+                     .map(p => p.replace(/^(_specs\/[^/]+\/[^/]+)\/.*/, '$1'))
               )];
 
-              for (const dir of specDirs) {
+              for (const dir of dirs) {
                 const m = dir.match(/^_specs\/([^/]+)\/([^/]+)/);
                 if (!m) continue;
-                const family  = m[1];
-                const version = m[2];
+                const [_, family, version] = m;
 
-                const dstRoot = path.join('/tmp/site/_draft_specs', family, version);
-                fs.mkdirSync(dstRoot, { recursive: true });
+                const dst = path.join('/tmp/site/_draft_specs', family, version);
+                fs.mkdirSync(dst, { recursive: true });
 
-                // List files in that _specs/<family>/<version> dir at PR HEAD
-                const listRaw = execSync(`git ls-tree -r --name-only ${pr.head.sha} '${dir}'`, { encoding: 'utf8' }).trim();
-                const filesInDir = listRaw ? listRaw.split('\n').filter(Boolean) : [];
+                const list = execSync(`git ls-tree -r --name-only ${pr.head.sha} '${dir}'`, {encoding:'utf8'})
+                               .trim().split('\n').filter(Boolean);
 
-                for (const p of filesInDir) {
+                for (const p of list) {
                   const rel = p.slice(dir.length + 1);
-                  const out = path.join(dstRoot, rel);
+                  const out = path.join(dst, rel);
                   fs.mkdirSync(path.dirname(out), { recursive: true });
-                  // Read blob from PR HEAD
-                  const blob = execSync(`git show ${pr.head.sha}:'${p.replace(/'/g, "'\\''")}'`, { encoding: 'utf8' });
+                  const blob = execSync(`git show ${pr.head.sha}:'${p.replace(/'/g,"'\\''")}'`, {encoding:'utf8'});
                   fs.writeFileSync(out, blob);
                 }
 
-                // Inject PR metadata into the draft index.md (front-matter)
-                const idx = path.join(dstRoot, 'index.md');
+                // inject PR metadata into the draft index.md (if present)
+                const idx = path.join(dst, 'index.md');
                 if (fs.existsSync(idx)) {
-                  const src  = fs.readFileSync(idx, 'utf8');
+                  const src = fs.readFileSync(idx, 'utf8');
                   const parts = src.split(/^---\s*$/m);
                   if (parts.length >= 3) {
                     parts[1] += `\npr: ${pr.number}\npr_url: ${pr.html_url}\npr_updated_at: ${pr.updated_at}\n`;
                     fs.writeFileSync(idx, parts.join('---\n'));
                   }
                 }
-
-                copied++;
+                overlayCount++;
               }
             }
+            core.setOutput('overlay_count', String(overlayCount));
 
-            core.setOutput('count', String(copied));
-
-      - name: Commit staged site to common-specs
-        env:
-          FORCE: ${{ inputs.force && 'true' || 'false' }}
-          BASE_REF: ${{ inputs.ref != '' && inputs.ref || 'main' }}
+      # Optional: keep an inspectable mirror of the staged source
+      - name: Mirror staged source to common-specs branch (create if missing)
+        if: ${{ inputs.mirror_branch != false }}
         run: |
           set -e
-
-          git fetch origin || true
-
-          # Prepare a separate working tree for the target branch
-          if git ls-remote --exit-code --heads origin common-specs >/dev/null 2>&1; then
+          git fetch origin common-specs || true
+          rm -rf /tmp/common-specs
+          if git show-ref --verify --quiet refs/remotes/origin/common-specs; then
             git worktree add -B common-specs /tmp/common-specs origin/common-specs
           else
             git worktree add -B common-specs /tmp/common-specs
           fi
-
-          # Sync staged site into the branch worktree
           rsync -a --delete /tmp/site/ /tmp/common-specs/
-
           cd /tmp/common-specs
           git config user.name  "spec-bot"
           git config user.email "spec-bot@users.noreply.github.com"
-
-          CHANGED=0
           if ! git diff --quiet; then
-            CHANGED=1
             git add -A
-            git commit -m "Publish site from ${BASE_REF} + drafts overlay (count=${{ steps.build.outputs.count || '0' }})"
+            git commit -m "Mirror staged source (overlays=${{ steps.build_drafts.outputs.overlay_count || '0' }}) from ${BASE_REF}"
             git push origin common-specs
+          else
+            echo "Mirror: no changes."
           fi
 
-          if [ "$CHANGED" -eq 0 ] && [ "$FORCE" = "true" ]; then
-            git commit --allow-empty -m "Forced republish (no diff) from ${BASE_REF}"
-            git push origin common-specs
-          elif [ "$CHANGED" -eq 0 ]; then
-            echo "No changes to publish."
+      # ---------- Build Jekyll locally ----------
+      - name: Set up Ruby for Jekyll
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: /tmp/site
+
+      - name: Install Jekyll (if no Gemfile)
+        run: |
+          set -e
+          cd /tmp/site
+          if [ ! -f Gemfile ]; then
+            gem install jekyll -N
           fi
+
+      - name: Build Jekyll site
+        env:
+          JEKYLL_ENV: production
+        run: |
+          set -e
+          cd /tmp/site
+          if [ -f Gemfile ]; then
+            bundle exec jekyll build --trace
+          else
+            jekyll build --trace
+          fi
+          test -d /tmp/site/_site
+
+      # ---------- Deploy to GitHub Pages via Actions ----------
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/site/_site
+
+      - name: Deploy to Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+        with:
+          # redeploy if forced, otherwise default behavior is fine
+          preview: ${{ inputs.force_deploy }}
+
+      - name: Done
+        run: |
+          echo "Deployed to: ${{ steps.deploy.outputs.page_url }}"
