@@ -37,13 +37,13 @@ title: Home
     </tr>
   </thead>
 
-  {# Latest per family (main specs) #}
+  <!-- Latest per family (main specs) -->
   <tbody id="latestTbody">
     {% assign families = all_specs | group_by: "family" %}
     {% for fam in families %}
       {% assign items_sorted = fam.items | sort_natural: "version" %}
       {% assign latest = items_sorted | last %}
-      <tr data-status="{{ latest.status | downcase }}">
+      <tr data-status="{{ latest.status | default: 'active' | downcase }}">
         <td data-label="Epic">
           {% if latest.epic %}
             {% if site.jira and site.jira.base_url %}
@@ -61,11 +61,11 @@ title: Home
     {% endfor %}
   </tbody>
 
-  {# All versions (main specs) #}
+  <!-- All versions (main specs) -->
   <tbody id="allTbody" hidden>
     {% assign all_sorted = all_specs | sort: "family" | sort_natural: "version" %}
     {% for s in all_sorted %}
-      <tr data-status="{{ s.status | downcase }}">
+      <tr data-status="{{ s.status | default: 'active' | downcase }}">
         <td data-label="Epic">
           {% if s.epic %}
             {% if site.jira and site.jira.base_url %}
@@ -83,12 +83,12 @@ title: Home
     {% endfor %}
   </tbody>
 
-  {# Drafts as real pages from the _draft_specs collection #}
+  <!-- Drafts as real pages from the _draft_specs collection -->
   <tbody id="draftTbody" hidden>
     {%- assign drafts = site.draft_specs -%}
     {%- if drafts == nil -%}{%- assign drafts = "" | split: "" -%}{%- endif -%}
     {%- for s in drafts -%}
-      <tr data-status="in-progress">
+      <tr data-status="{{ s.status | default: 'in-progress' | downcase }}">
         <td data-label="Epic">
           {% if s.epic %}
             {% if site.jira and site.jira.base_url %}
@@ -140,24 +140,23 @@ title: Home
 
   function syncSectionsForTab() {
     const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
+    const toggleWrap = showAll.closest('.toggle');
 
     if (activeTab === 'in-progress') {
       // Only show draft table on In-Progress tab
       draftTbody.hidden = false;
       latestTbody.hidden = true;
       allTbody.hidden = true;
-      // Show updated column for drafts
       setUpdatedColumnVisible(true);
-      // Hide the "Show all versions" toggle (it applies only to main specs)
-      showAll.closest('.toggle').style.visibility = 'hidden';
+      if (toggleWrap) toggleWrap.style.visibility = 'hidden';
     } else {
-      // Show main specs; toggle between latest/all by the checkbox
+      // Main specs (latest vs all)
       draftTbody.hidden = true;
       const useAll = showAll.checked;
       latestTbody.hidden = useAll;
       allTbody.hidden = !useAll;
       setUpdatedColumnVisible(useAll);
-      showAll.closest('.toggle').style.visibility = 'visible';
+      if (toggleWrap) toggleWrap.style.visibility = 'visible';
     }
   }
 
