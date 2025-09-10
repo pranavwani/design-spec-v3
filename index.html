@@ -22,7 +22,11 @@ title: Home
   </div>
 </header>
 
-{% assign all_specs = site.specs %}
+{%- comment -%}
+Only include **space roots** (…/index.md). This prevents sibling pages (api.md, ux.md, etc.)
+from appearing as rows in the main table.
+{%- endcomment -%}
+{% assign all_specs = site.specs | where_exp: "d", "d.path contains '/index.md'" %}
 
 <table id="specTable" aria-live="polite">
   <thead>
