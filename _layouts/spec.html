@@ -3,26 +3,22 @@ layout: base
 ---
 
 {%- comment -%}
-Figure out which collection this page belongs to.
+Determine which collection this page belongs to:
+- "specs" (main) or "draft_specs" (draft pages materialized from PRs)
 {%- endcomment -%}
 {%- assign col_name = page.collection | default: 'specs' -%}
-{%- if col_name == 'draft_specs' -%}
-  {%- assign col = site.draft_specs -%}
-{%- else -%}
-  {%- assign col = site.specs -%}
-{%- endif -%}
+{%- assign col = col_name == 'draft_specs' | ternary: site.draft_specs, site.specs -%}
 
 {%- comment -%}
-Compute the URL root (/specs/<family>/<version>/) and the canonical index page for the space.
+Space bookkeeping:
+- root: URL root (/specs/<family>/<version>/ or /drafts/<family>/<version>/)
+- space_index: index.md page for this space (source of canonical metadata)
+- space_dir: folder path for this space on disk (…/<family>/<version>/)
 {%- endcomment -%}
 {%- assign root = page.url | replace: '/index.html','/' -%}
 {%- assign space_index = col | where: "url", root | first -%}
 {%- assign meta = space_index | default: page -%}
 
-{%- comment -%}
-Compute the on-disk directory (_specs/<family>/<version>/ or _draft_specs/<family>/<version>/).
-IMPORTANT: do this in two steps so Liquid precedence doesn’t break it.
-{%- endcomment -%}
 {%- assign parts  = page.path | split:'/' -%}
 {%- assign length = parts.size | minus: 1 -%}
 {%- assign space_dir = parts | slice: 0, length | join:'/' | append:'/' -%}
@@ -34,13 +30,14 @@ IMPORTANT: do this in two steps so Liquid precedence doesn’t break it.
     {%- if meta.epic -%}
       {%- assign _epic = meta.epic | strip -%}
       {%- if site.jira and site.jira.base_url -%}
-        <a class="pill pill--muted" href="{{ site.jira.base_url }}/{{ _epic }}" target="_blank" rel="noopener">Epic {{ _epic }}</a>
+        <a class="pill pill--muted" href="{{ site.jira.base_url | append: '/' | append: _epic }}" target="_blank" rel="noopener">Epic {{ _epic }}</a>
       {%- else -%}
         <span class="pill pill--muted">Epic {{ _epic }}</span>
       {%- endif -%}
     {%- endif -%}
 
-    {%- if meta.version -%}<span class="pill">Spec {{ meta.version }}</span>{%- endif -%}
+    {%- assign spec_ver = meta.spec_version | default: meta.version -%}
+    {%- if spec_ver -%}<span class="pill">Spec {{ spec_ver }}</span>{%- endif -%}
     {%- if meta.stage -%}<span class="pill pill--muted">{{ meta.stage | upcase }}</span>{%- endif -%}
     {%- if meta.status -%}<span class="pill pill--{{ meta.status | downcase }}">{{ meta.status | capitalize }}</span>{%- endif -%}
     {%- if meta.updated_at -%}<span class="pill pill--muted">Updated {{ meta.updated_at }}</span>{%- endif -%}
@@ -48,7 +45,8 @@ IMPORTANT: do this in two steps so Liquid precedence doesn’t break it.
     {%- if meta.owner -%}
       {%- assign _owner = meta.owner | strip -%}
       {%- if _owner | slice: 0, 1 == '@' -%}
-        <a class="pill pill--muted" href="https://github.com/{{ _owner | remove:'@' | uri_escape }}" target="_blank" rel="noopener">Owner {{ _owner }}</a>
+        {%- assign _handle = _owner | remove: '@' -%}
+        <a class="pill pill--muted" href="https://github.com/{{ _handle | uri_escape }}" target="_blank" rel="noopener" title="Open {{ _owner }} on GitHub">Owner {{ _owner }}</a>
       {%- else -%}
         <span class="pill">Owner {{ _owner }}</span>
       {%- endif -%}
@@ -56,7 +54,6 @@ IMPORTANT: do this in two steps so Liquid precedence doesn’t break it.
 
     {%- if meta.team -%}<span class="pill">Team {{ meta.team }}</span>{%- endif -%}
     {%- if meta.created_at -%}<span class="pill pill--muted">Created {{ meta.created_at }}</span>{%- endif -%}
-
     {%- if meta.pr_url and meta.pr -%}
       <a class="pill pill--muted" href="{{ meta.pr_url }}" target="_blank" rel="noopener">PR #{{ meta.pr }}</a>
     {%- endif -%}
@@ -64,7 +61,8 @@ IMPORTANT: do this in two steps so Liquid precedence doesn’t break it.
 </header>
 
 {%- comment -%}
-Collect only top-level files in this space (index.md + first-level .md siblings).
+Build sidebar: only top-level docs in this space (index.md + first-level .md files).
+Use nav_title/nav_order when present; otherwise map sensible defaults.
 {%- endcomment -%}
 {%- assign docs_in_space = col | where_exp:'d', "d.path contains space_dir" -%}
 
@@ -74,23 +72,23 @@ Collect only top-level files in this space (index.md + first-level .md siblings)
 {%- for d in docs_in_space -%}
   {%- assign rel   = d.path | remove_first: space_dir -%}
   {%- assign depth = rel | split:'/' | size -%}
-  {%- if depth > 1 -%}{% continue %}{%- endif -%} {# skip nested folders/assets #}
+  {%- if depth > 1 -%}{% continue %}{%- endif -%} {%- comment -%} skip nested folders/assets {%- endcomment -%}
 
-  {%- assign href = d.url | replace: '/index.html','/' -%}
-  {%- assign slug = rel | replace:'index.md','overview' | replace:'.md','' | downcase -%}
+  {%- assign href  = d.url | replace: '/index.html','/' -%}
+  {%- assign slug  = rel | replace:'index.md','overview' | replace:'.md','' | downcase -%}
 
   {%- assign label = d.nav_title | default: d.title -%}
   {%- if label == nil or label == "" -%}
     {%- case slug -%}
-      {%- when 'overview'   -%}{% assign label = 'Overview' %}
-      {%- when 'hld'        -%}{% assign label = 'High-Level Design' %}
-      {%- when 'lld'        -%}{% assign label = 'Low-Level Design' %}
-      {%- when 'data-model' -%}{% assign label = 'Data Model' %}
-      {%- when 'api'        -%}{% assign label = 'API' %}
-      {%- when 'ux'         -%}{% assign label = 'UX' %}
-      {%- when 'rollout-ops'-%}{% assign label = 'Rollout & Ops' %}
-      {%- when 'qa-test'    -%}{% assign label = 'QA / Test Plan' %}
-      {%- else              -%}{% assign label = slug | replace:'-',' ' | capitalize %}
+      {%- when 'overview' -%}{%- assign label = 'Overview' -%}
+      {%- when 'hld' -%}{%- assign label = 'High-Level Design' -%}
+      {%- when 'lld' -%}{%- assign label = 'Low-Level Design' -%}
+      {%- when 'data-model' -%}{%- assign label = 'Data Model' -%}
+      {%- when 'api' -%}{%- assign label = 'API' -%}
+      {%- when 'ux' -%}{%- assign label = 'UX' -%}
+      {%- when 'rollout-ops' -%}{%- assign label = 'Rollout & Ops' -%}
+      {%- when 'qa-test' -%}{%- assign label = 'QA / Test Plan' -%}
+      {%- else -%}{%- assign label = slug | replace:'-',' ' | capitalize -%}
     {%- endcase -%}
   {%- endif -%}
 
@@ -100,7 +98,7 @@ Collect only top-level files in this space (index.md + first-level .md siblings)
     {%- for p in order_map -%}
       {%- assign k = p | split:':' | first -%}
       {%- assign v = p | split:':' | last  -%}
-      {%- if slug == k -%}{% assign mapped = v %}{%- endif -%}
+      {%- if slug == k -%}{%- assign mapped = v -%}{%- endif -%}
     {%- endfor -%}
     {%- assign order = mapped -%}
   {%- endif -%}
@@ -113,19 +111,26 @@ Collect only top-level files in this space (index.md + first-level .md siblings)
       | replace:'__A__', is_active -%}
   {%- assign normalized = normalized | push: item -%}
 {%- endfor -%}
+
 {%- assign sorted = normalized | sort: 'order' -%}
 
 {%- comment -%}
-Version switcher: show other published versions of the same family (from main _specs).
+Version switcher: other published versions of this family (index pages only)
 {%- endcomment -%}
-{%- assign family_key = meta.family | default: page.family -%}
+{%- assign family_key   = meta.family | default: page.family -%}
 {%- assign family_roots = site.specs | where: 'family', family_key | where_exp:'d', "d.path contains '/index.md'" | sort_natural: 'version' -%}
 
 {%- assign status_lc = meta.status | downcase -%}
 {%- if status_lc == "deprecated" or status_lc == "in-progress" -%}
   <div class="callout {% if status_lc == 'deprecated' %}danger{% else %}warn{% endif %}" role="status" aria-live="polite">
     <h3>{% if status_lc == 'deprecated' %}Deprecated{% else %}Draft{% endif %}</h3>
-    <p>{% if status_lc == 'deprecated' %}This spec is no longer maintained.{% else %}This spec is a work-in-progress. Details may change.{% endif %}</p>
+    <p>
+      {% if status_lc == 'deprecated' %}
+        This spec is no longer maintained.
+      {% else %}
+        This spec is a work-in-progress. Details may change.
+      {% endif %}
+    </p>
     <p class="small">
       {% if meta.updated_at %}Last updated: <strong>{{ meta.updated_at }}</strong>.{% endif %}
       {% if meta.deprecated_at and status_lc == 'deprecated' %} Deprecated on <strong>{{ meta.deprecated_at }}</strong>.{% endif %}
@@ -171,7 +176,7 @@ Version switcher: show other published versions of the same family (from main _s
 /* PJAX-lite: keep header + leftbar static; swap only the right pane */
 (function () {
   const containerSel = '#spec-content';
-  const navSel = '.sidebar-nav a';
+  const navSel = '.sidebar-nav a, .side-links a';
 
   function sameOrigin(href) {
     try { return new URL(href, location.href).origin === location.origin; }
@@ -182,17 +187,18 @@ Version switcher: show other published versions of the same family (from main _s
     document.querySelectorAll(navSel).forEach(a => {
       const match = new URL(a.href, location.href).href === absHref;
       a.classList.toggle('active', match);
-      if (match) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      if (match) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
     });
   }
 
   async function load(href, { push = true, scroll = true } = {}) {
     const abs = new URL(href, location.href).href;
-    const res = await fetch(abs, { headers: { 'X-PJAX': '1' } });
+    const res = await fetch(abs, { headers: { 'X-PJAX': '1' }});
     if (!res.ok) return location.assign(abs);
 
     const html = await res.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const doc  = new DOMParser().parseFromString(html, 'text/html');
     const next = doc.querySelector(containerSel);
     const curr = document.querySelector(containerSel);
     if (!next || !curr) return location.assign(abs);
@@ -210,9 +216,11 @@ Version switcher: show other published versions of the same family (from main _s
   document.addEventListener('click', (e) => {
     const a = e.target.closest(navSel);
     if (!a) return;
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
     const href = a.getAttribute('href');
     if (!href || href.startsWith('#') || !sameOrigin(href)) return;
+
     e.preventDefault();
     load(href).catch(() => location.assign(href));
   });
