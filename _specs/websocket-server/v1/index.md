@@ -4,15 +4,17 @@ epic: MXOP-1234
 family: websocket-server
 version: v1
 title: Websocket Server
-status: in-progress
+status: active
 stage: dev
-spec_version: "1.0.0"
+spec_version: "1.0.1"
 owner: "@pranavwani"
 team: ""
 created_at: 2025-09-10
-updated_at:
+updated_at: "2025-09-10"
 tags: []
 changelog:
+  - date: "2025-09-10"
+    text: 'Merged PR #34: [Spec] Websocket Server (scaffold)'
   - date: 2025-09-10
     text: "Initial scaffold from issue #33"
 nav_title: "Overview"
