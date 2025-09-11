@@ -1,6 +1,13 @@
 name: Publish site (main + drafts overlay)
 
 on:
+
+  # when scaffold finishes
+  workflow_run:
+    workflows: ["Auto scaffold spec from issue"]  # must equal the other workflow's `name:`
+    branches: [main]                               # only when that run's head_branch is main
+    types: [completed]
+
   # Deploy the production site when main changes
   push:
     branches: [main]
