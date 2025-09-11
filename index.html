@@ -129,9 +129,9 @@ title: Home
 
       <td data-label="Access">
         <span class="cell-actions">
-          <a class="view-btn" href="{{ latest.url | relative_url }}">View</a>
-          {% if latest.pr_url %}
-          <a class="view-btn" href="{{ latest.pr_url }}" target="_blank" rel="noopener">PR #{{ latest.pr }}</a>
+          <a class="view-btn" href="{{ d.url | relative_url }}">View</a>
+          {% if d.pr_url %}
+          <a class="view-btn" href="{{ d.pr_url }}" target="_blank" rel="noopener">PR #{{ d.pr }}</a>
           {% endif %}
         </span>
       </td>
