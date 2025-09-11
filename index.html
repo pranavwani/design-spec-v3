@@ -7,7 +7,7 @@ title: Home
   <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
   <div class="actions">
     {% assign repo = site.github.repository_url | default: site.repo_url %}
-
+    
     <a class="btn primary" href="{{ repo }}/issues/new?template=new-spec.yml">
       Submit a New Design Spec
     </a>
@@ -16,16 +16,20 @@ title: Home
     </a>
 
   </div>
+
   <div class="tabs" role="tablist" aria-label="Spec status">
     <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
     <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
     <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
   </div>
+
   <div class="searchbar">
     <input id="q" type="search" placeholder="Search by title, family, version, id…" aria-label="Search specs">
   </div>
 </header>
+
 {% assign all_specs = site.specs %}
+
 <table id="specTable" aria-live="polite">
   <thead>
     <tr>
@@ -35,57 +39,65 @@ title: Home
       <th style="width:90px">Version</th>
       <th style="width:150px">Created At</th>
       <th class="col-updated" style="width:150px">Updated At</th>
-      <th style="width:120px">Access</th>
+      <th style="width:160px">Access</th>
     </tr>
   </thead>
+
+  <!-- Latest version per family -->
   <tbody id="latestTbody">
     {% assign families = all_specs | group_by: "family" %}
     {% for fam in families %}
-    {% assign items_sorted = fam.items | sort_natural: "version" %}
-    {% assign latest = items_sorted | last %}
-    <tr data-status="{{ latest.status | downcase }}">
-      <td data-label="Epic">
-        {%- if latest.epic -%}
-        {%- if site.jira and site.jira.base_url -%}
-        <a href="{{ site.jira.base_url }}/{{ latest.epic }}" target="_blank" rel="noopener">{{ latest.epic }}</a>
-        {%- else -%}
-        {{ latest.epic }}
-        {%- endif -%}
-        {%- else -%}
-        —
-        {%- endif -%}
-      </td>
-      <td data-label="Title">{{ latest.title }}</td>
-      <td data-label="Family">{{ latest.family }}</td>
-      <td data-label="Version">{{ latest.version }}</td>
-      <td data-label="Created At">{{ latest.created_at }}</td>
-      <td class="col-updated" data-label="Updated At"></td>
-      <td data-label="Access"><a class="view-btn" href="{{ latest.url | relative_url }}">View</a></td>
-    </tr>
+      {% assign items_sorted = fam.items | sort_natural: "version" %}
+      {% assign latest = items_sorted | last %}
+      <tr data-status="{{ latest.status | downcase }}">
+        <td data-label="Epic">
+          {%- if latest.epic -%}
+            {%- if site.jira and site.jira.base_url -%}
+              <a href="{{ site.jira.base_url }}/{{ latest.epic }}" target="_blank" rel="noopener">{{ latest.epic }}</a>
+            {%- else -%}
+              {{ latest.epic }}
+            {%- endif -%}
+          {%- else -%}—{%- endif -%}
+        </td>
+        <td data-label="Title">{{ latest.title }}</td>
+        <td data-label="Family">{{ latest.family }}</td>
+        <td data-label="Version">{{ latest.version }}</td>
+        <td data-label="Created At">{{ latest.created_at }}</td>
+        <td class="col-updated" data-label="Updated At"></td>
+        <td data-label="Access" class="cell-actions">
+          <a class="view-btn" href="{{ latest.url | relative_url }}">View</a>
+        </td>
+      </tr>
     {% endfor %}
   </tbody>
+
+  <!-- All versions -->
   <tbody id="allTbody" hidden>
     {% assign all_sorted = all_specs | sort: "family" | sort_natural: "version" %}
     {% for s in all_sorted %}
-    <tr data-status="{{ s.status | downcase }}">
-      <td data-label="Epic">
-        {%- if s.epic -%}
-        {%- if site.jira and site.jira.base_url -%}
-        <a href="{{ site.jira.base_url }}/{{ s.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
-        {%- else -%}
-        {{ s.epic }}
-        {%- endif -%}
-        {%- else -%}—{%- endif -%}
-      </td>
-      <td data-label="Title">{{ s.title }}</td>
-      <td data-label="Family">{{ s.family }}</td>
-      <td data-label="Version">{{ s.version }}</td>
-      <td data-label="Created At">{{ s.created_at }}</td>
-      <td class="col-updated" data-label="Updated At">{{ s.updated_at | default: s.created_at }}</td>
-      <td data-label="Access"><a class="view-btn" href="{{ s.url | relative_url }}">View</a></td>
-    </tr>
+      <tr data-status="{{ s.status | downcase }}">
+        <td data-label="Epic">
+          {%- if s.epic -%}
+            {%- if site.jira and site.jira.base_url -%}
+              <a href="{{ site.jira.base_url }}/{{ s.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
+            {%- else -%}
+              {{ s.epic }}
+            {%- endif -%}
+          {%- else -%}—{%- endif -%}
+        </td>
+        <td data-label="Title">{{ s.title }}</td>
+        <td data-label="Family">{{ s.family }}</td>
+        <td data-label="Version">{{ s.version }}</td>
+        <td data-label="Created At">{{ s.created_at }}</td>
+        <td class="col-updated" data-label="Updated At">{{ s.updated_at | default: s.created_at }}</td>
+        <td data-label="Access" class="cell-actions">
+          <a class="view-btn" href="{{ s.url | relative_url }}">View</a>
+        </td>
+      </tr>
     {% endfor %}
   </tbody>
+
+  <!-- Draft/in-progress spaces (from draft_specs collection) -->
   <tbody id="draftTbody">
     {%- comment -%}
     Show only the draft *index.md* pages (one row per space).
@@ -93,41 +105,45 @@ title: Home
     {%- endcomment -%}
     {%- assign draft_indexes = site.draft_specs | where: "name", "index.md" -%}
     {%- for d in draft_indexes -%}
-    <tr data-status="in-progress">
-      <td data-label="Epic">
-        {%- if d.epic -%}
-        {%- if site.jira and site.jira.base_url -%}
-        <a href="{{ site.jira.base_url }}/{{ d.epic }}" target="_blank" rel="noopener">{{ d.epic }}</a>
-        {%- else -%}
-        {{ d.epic }}
-        {%- endif -%}
-        {%- else -%}—{%- endif -%}
-      </td>
+      <tr data-status="in-progress">
+        <td data-label="Epic">
+          {%- if d.epic -%}
+            {%- if site.jira and site.jira.base_url -%}
+              <a href="{{ site.jira.base_url }}/{{ d.epic }}" target="_blank" rel="noopener">{{ d.epic }}</a>
+            {%- else -%}
+              {{ d.epic }}
+            {%- endif -%}
+          {%- else -%}—{%- endif -%}
+        </td>
 
-      <td data-label="Title">{{ d.title }}</td>
-      <td data-label="Family">{{ d.family }}</td>
-      <td data-label="Version">{{ d.version }}</td>
+        <td data-label="Title">{{ d.title }}</td>
+        <td data-label="Family">{{ d.family }}</td>
+        <td data-label="Version">{{ d.version }}</td>
 
-      {%- assign draft_updated = d.pr_updated_at | default: d.updated_at | default: d.created_at -%}
-      <td data-label="Created At">{{ d.created_at | default: draft_updated }}</td>
-      <td class="col-updated" data-label="Updated At">{{ draft_updated }}</td>
-
-      <td data-label="Access">
-        <a class="view-btn" href="{{ d.url | relative_url }}">View</a>
-        {%- if d.pr_url -%} · <a class="view-btn" href="{{ d.pr_url }}">PR #{{ d.pr | default: d.pr_number }}</a>{%-
-        endif -%}
-      </td>
-    </tr>
+        {%- assign draft_updated = d.pr_updated_at | default: d.updated_at | default: d.created_at -%}
+        <td data-label="Created At">{{ d.created_at | default: draft_updated }}</td>
+        <td class="col-updated" data-label="Updated At">{{ draft_updated }}</td>
+        
+        <td data-label="Access" class="cell-actions">
+          <a class="view-btn" href="{{ d.url | relative_url }}">View</a>
+          {%- if d.pr_url -%}
+            <a class="view-btn" href="{{ d.pr_url }}">PR #{{ d.pr | default: d.pr_number }}</a>
+          {%- endif -%}
+        </td>
+      </tr>
     {%- endfor -%}
   </tbody>
 </table>
+
 <div class="table-toolbar">
   <label class="toggle">
     <input id="showAll" type="checkbox" />
     <span>Show all versions</span>
   </label>
 </div>
+
 <div id="empty" class="empty" hidden>No specs match this filter.</div>
+
 <script>
   function currentRows() { return [...document.querySelectorAll('tbody:not([hidden]) tr')]; }
   const tabs = [...document.querySelectorAll('.tab')];
@@ -136,11 +152,14 @@ title: Home
   const showAll = document.getElementById('showAll');
   const latestTbody = document.getElementById('latestTbody');
   const allTbody = document.getElementById('allTbody');
+  const draftTbody = document.getElementById('draftTbody');
+
   function setUpdatedColumnVisible(visible) {
     document.querySelectorAll('.col-updated').forEach(el => {
       if (visible) el.classList.remove('u-hidden'); else el.classList.add('u-hidden');
     });
   }
+
   function updateMode() {
     const useAll = showAll.checked;
     latestTbody.hidden = useAll;
@@ -148,9 +167,19 @@ title: Home
     setUpdatedColumnVisible(useAll);
     applyFilters();
   }
+
+  // Only show draft tbody when the In-Progress tab is active
+  function syncDraftVisibility() {
+    const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
+    draftTbody.hidden = (activeTab !== 'in-progress');
+  }
+
   function applyFilters() {
     const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
     const term = (q.value || '').toLowerCase().trim();
+
+    syncDraftVisibility();
+
     let shown = 0;
     currentRows().forEach(r => {
       const inTab = (r.dataset.status || '') === activeTab;
@@ -160,12 +189,24 @@ title: Home
     });
     empty.hidden = shown !== 0;
   }
+
+  // Persist selected tab across reloads
+  function setActiveTab(name) {
+    tabs.forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.target === name)));
+  }
+  const savedTab = localStorage.getItem('specs.tab') || 'active';
+  setActiveTab(savedTab);
+
   tabs.forEach(t => t.addEventListener('click', () => {
+    const target = t.dataset.target;
     tabs.forEach(x => x.setAttribute('aria-selected', String(x === t)));
+    localStorage.setItem('specs.tab', target);
     applyFilters();
   }));
+
   q.addEventListener('input', applyFilters);
   showAll.addEventListener('change', updateMode);
+
   setUpdatedColumnVisible(false);
-  applyFilters();
+  applyFilters();  // respects saved tab
 </script>

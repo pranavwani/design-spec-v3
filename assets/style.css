@@ -169,3 +169,15 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 }
 
 #spec-content { transition: opacity .12s ease; }
+
+/* Keep action links tidy in a row */
+.cell-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .cell-actions { flex-wrap: wrap; }
+}
+.view-btn { white-space: nowrap; vertical-align: middle; }
