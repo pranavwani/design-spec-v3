@@ -20,7 +20,7 @@ jobs:
         run: |
           python - << 'PY'
           import re, sys, glob, yaml, datetime
-          REQUIRED = ["id","title","status","owner","team","created_at","family","version"]
+          REQUIRED = ["epic","title","status","owner","created_at","family","version"]
           STATUS = {"active","in-progress","deprecated"}
           DATE_KEYS = ["created_at","updated_at","deprecated_at"]
           errors=[]
