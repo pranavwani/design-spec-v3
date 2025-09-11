@@ -3,18 +3,21 @@ layout: base
 title: Home
 ---
 <header class="hero">
-  <h1>Welcome to {{ site.title }}</h1>
-  <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
-  <div class="actions">
-    {% assign repo = site.github.repository_url | default: site.repo_url %}
-    
-    <a class="btn primary" href="{{ repo }}/issues/new?template=new-spec.yml">
-      Submit a New Design Spec
-    </a>
-    <a class="btn" href="{{ repo }}/issues/new?template=update-spec.yml">
-      Submit an Update
-    </a>
+  <div class="hero-top">
+    <div class="hero-text">
+      <h1>Welcome to {{ site.title }}</h1>
+      <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
+    </div>
 
+    {% assign repo = site.github.repository_url | default: site.repo_url %}
+    <div class="actions">
+      <a class="btn primary" href="{{ repo }}/issues/new?template=new-spec.yml" target="_blank" rel="noopener">
+        Submit a New Design Spec
+      </a>
+      <a class="btn" href="{{ repo }}/issues/new?template=update-spec.yml" target="_blank" rel="noopener">
+        Submit an Update
+      </a>
+    </div>
   </div>
 
   <div class="tabs" role="tablist" aria-label="Spec status">
@@ -123,7 +126,7 @@ title: Home
         {%- assign draft_updated = d.pr_updated_at | default: d.updated_at | default: d.created_at -%}
         <td data-label="Created At">{{ d.created_at | default: draft_updated }}</td>
         <td class="col-updated" data-label="Updated At">{{ draft_updated }}</td>
-        
+
         <td data-label="Access" class="cell-actions">
           <a class="view-btn" href="{{ d.url | relative_url }}">View</a>
           {%- if d.pr_url -%}

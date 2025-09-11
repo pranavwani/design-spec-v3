@@ -181,3 +181,27 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   .cell-actions { flex-wrap: wrap; }
 }
 .view-btn { white-space: nowrap; vertical-align: middle; }
+
+/* Hero top row: text left, actions right */
+.hero-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+}
+.hero-text{ flex:1; min-width:260px; }
+
+/* Tighten actions spacing inside hero when right-aligned */
+.hero .actions{
+  display:flex;
+  gap:12px;
+  margin:0;            /* override previous 12px 0 24px */
+}
+
+/* Mobile: stack buttons under title nicely */
+@media (max-width:700px){
+  .hero-top{ flex-direction:column; align-items:stretch; }
+  .hero .actions{ flex-wrap:wrap; }
+  .hero .actions .btn{ flex:1; text-align:center; }
+}
