@@ -55,6 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BASE_REF: ${{ inputs.ref || 'main' }}
+      IS_PR: ${{ github.event_name == 'pull_request_target' }}
 
     steps:
       # -------- Early guard to avoid building on non-spec PRs --------
@@ -226,18 +227,19 @@ jobs:
 
       # -------- Deploy to GitHub Pages (ONLY push to main or manual run) --------
       - name: Configure Pages
-        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request_target')
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
-        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request_target')
         uses: actions/upload-pages-artifact@v3
         with:
           path: /tmp/site/_site
 
       - name: Deploy to Pages
-        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request_target')
         id: deploy
         uses: actions/deploy-pages@v4
         with:
-          preview: ${{ inputs.force_deploy || false }}
+          # Preview for PRs; regular deploy for push/dispatch
+          preview: ${{ github.event_name == 'pull_request_target' || inputs.force_deploy }}
