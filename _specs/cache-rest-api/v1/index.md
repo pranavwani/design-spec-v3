@@ -4,15 +4,17 @@ epic: MXOP-2314
 family: Cache REST API
 version: v1
 title: Cache REST API
-status: in-progress
+status: active
 stage: dev
-spec_version: "1.0.0"
+spec_version: "1.0.1"
 owner: "@pranavwani"
 team: ""
 created_at: 2025-09-11
-updated_at:
+updated_at: "2025-09-11"
 tags: []
 changelog:
+  - date: "2025-09-11"
+    text: 'Merged PR #56: [Spec] Cache REST API (scaffold)'
   - date: 2025-09-11
     text: "Initial scaffold from issue #55"
 nav_title: "Overview"
