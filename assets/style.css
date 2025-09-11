@@ -206,3 +206,101 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   .hero .actions{ flex-wrap:wrap; align-self: stretch; }
   .hero .actions .btn{ flex:1; text-align:center; }
 }
+
+/* ---------- Polish patch (append to end of style.css) ---------- */
+
+/* 1) Subtle page background + crisper borders */
+body { background: #fbfcfe; }            /* softer than white */
+:root { --border:#e6e9ef; --ring:#2563eb; }
+
+/* 2) Buttons – hover/active/focus, slightly bolder */
+.btn {
+  font-weight: 600;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .04s ease;
+}
+.btn:hover { background: #f3f6fb; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.25); }
+
+/* Compact chip-style action buttons used in the table */
+.view-btn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  background:#fff;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.view-btn:hover { background:#f7f8fb; }
+.view-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.25); }
+
+/* Keep action links tidy in a row */
+.cell-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* 3) Tabs as rounded chips + better selected/focus */
+.tabs { gap: 6px; border-bottom: 1px solid var(--border); }
+.tab {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 600;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.tab[aria-selected="true"] {
+  background: #eef2ff;
+  border-color: transparent;
+  color: #1e40af;
+}
+.tab[aria-selected="false"] { background: #f3f4f6; color: #374151; }
+.tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.25); }
+
+/* 4) Search input — soft background + focus ring */
+.searchbar input {
+  background: #f9fafb;
+  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.searchbar input:focus {
+  background:#fff;
+  border-color:#c7d2fe;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.2);
+  outline: none;
+}
+
+/* 5) Table polish — hover stripe + sticky header on mobile wrap */
+table { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+tbody tr:hover { background: #fafbff; }
+th, td { vertical-align: middle; }
+th { background: #fff; }
+
+/* 6) Hero row balance – center actions vertically (you asked for this) */
+.hero-top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+.hero .actions { justify-self: end; align-self: center; }
+
+/* 7) Pills – cleaner neutrals */
+.pill { background:#f5f7fb; border:1px solid #e6e9ef; }
+.pill--in-progress { background:#fff8db; border-color:#facc15; }
+.pill--deprecated { background:#ffe4e6; border-color:#f87171; }
+.pill--muted { background:#fff; }
+
+/* 8) Dark mode (safe) */
+@media (prefers-color-scheme: dark) {
+  :root { --text:#e5e7eb; --sub:#9ca3af; --border:#2e3440; --muted:#1f2430; }
+  body { background:#0f141b; }
+  .btn.primary { background:#3b82f6; border-color:#3b82f6; }
+  .tab[aria-selected="true"] { background:#1f2937; color:#e5e7eb; }
+  table { border-color:#2e3440; }
+  th { background:#0f141b; }
+  tbody tr:hover { background:#18202b; }
+  .view-btn { background:#0f141b; }
+}
+
+/* 9) Tiny motion everywhere */
+a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .04s ease; }
+
+/* 10) Make Access buttons sit nicely even on small screens */
+@media (max-width: 600px) {
+  .cell-actions { flex-wrap: wrap; gap: 6px; }
+}

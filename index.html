@@ -50,27 +50,27 @@ title: Home
   <tbody id="latestTbody">
     {% assign families = all_specs | group_by: "family" %}
     {% for fam in families %}
-      {% assign items_sorted = fam.items | sort_natural: "version" %}
-      {% assign latest = items_sorted | last %}
-      <tr data-status="{{ latest.status | downcase }}">
-        <td data-label="Epic">
-          {%- if latest.epic -%}
-            {%- if site.jira and site.jira.base_url -%}
-              <a href="{{ site.jira.base_url }}/{{ latest.epic }}" target="_blank" rel="noopener">{{ latest.epic }}</a>
-            {%- else -%}
-              {{ latest.epic }}
-            {%- endif -%}
-          {%- else -%}—{%- endif -%}
-        </td>
-        <td data-label="Title">{{ latest.title }}</td>
-        <td data-label="Family">{{ latest.family }}</td>
-        <td data-label="Version">{{ latest.version }}</td>
-        <td data-label="Created At">{{ latest.created_at }}</td>
-        <td class="col-updated" data-label="Updated At"></td>
-        <td data-label="Access" class="cell-actions">
-          <a class="view-btn" href="{{ latest.url | relative_url }}">View</a>
-        </td>
-      </tr>
+    {% assign items_sorted = fam.items | sort_natural: "version" %}
+    {% assign latest = items_sorted | last %}
+    <tr data-status="{{ latest.status | downcase }}">
+      <td data-label="Epic">
+        {%- if latest.epic -%}
+        {%- if site.jira and site.jira.base_url -%}
+        <a href="{{ site.jira.base_url }}/{{ latest.epic }}" target="_blank" rel="noopener">{{ latest.epic }}</a>
+        {%- else -%}
+        {{ latest.epic }}
+        {%- endif -%}
+        {%- else -%}—{%- endif -%}
+      </td>
+      <td data-label="Title">{{ latest.title }}</td>
+      <td data-label="Family">{{ latest.family }}</td>
+      <td data-label="Version">{{ latest.version }}</td>
+      <td data-label="Created At">{{ latest.created_at }}</td>
+      <td class="col-updated" data-label="Updated At"></td>
+      <td data-label="Access" class="cell-actions">
+        <a class="view-btn" href="{{ latest.url | relative_url }}">View</a>
+      </td>
+    </tr>
     {% endfor %}
   </tbody>
 
@@ -78,25 +78,25 @@ title: Home
   <tbody id="allTbody" hidden>
     {% assign all_sorted = all_specs | sort: "family" | sort_natural: "version" %}
     {% for s in all_sorted %}
-      <tr data-status="{{ s.status | downcase }}">
-        <td data-label="Epic">
-          {%- if s.epic -%}
-            {%- if site.jira and site.jira.base_url -%}
-              <a href="{{ site.jira.base_url }}/{{ s.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
-            {%- else -%}
-              {{ s.epic }}
-            {%- endif -%}
-          {%- else -%}—{%- endif -%}
-        </td>
-        <td data-label="Title">{{ s.title }}</td>
-        <td data-label="Family">{{ s.family }}</td>
-        <td data-label="Version">{{ s.version }}</td>
-        <td data-label="Created At">{{ s.created_at }}</td>
-        <td class="col-updated" data-label="Updated At">{{ s.updated_at | default: s.created_at }}</td>
-        <td data-label="Access" class="cell-actions">
-          <a class="view-btn" href="{{ s.url | relative_url }}">View</a>
-        </td>
-      </tr>
+    <tr data-status="{{ s.status | downcase }}">
+      <td data-label="Epic">
+        {%- if s.epic -%}
+        {%- if site.jira and site.jira.base_url -%}
+        <a href="{{ site.jira.base_url }}/{{ s.epic }}" target="_blank" rel="noopener">{{ s.epic }}</a>
+        {%- else -%}
+        {{ s.epic }}
+        {%- endif -%}
+        {%- else -%}—{%- endif -%}
+      </td>
+      <td data-label="Title">{{ s.title }}</td>
+      <td data-label="Family">{{ s.family }}</td>
+      <td data-label="Version">{{ s.version }}</td>
+      <td data-label="Created At">{{ s.created_at }}</td>
+      <td class="col-updated" data-label="Updated At">{{ s.updated_at | default: s.created_at }}</td>
+      <td data-label="Access" class="cell-actions">
+        <a class="view-btn" href="{{ s.url | relative_url }}">View</a>
+      </td>
+    </tr>
     {% endfor %}
   </tbody>
 
@@ -108,32 +108,34 @@ title: Home
     {%- endcomment -%}
     {%- assign draft_indexes = site.draft_specs | where: "name", "index.md" -%}
     {%- for d in draft_indexes -%}
-      <tr data-status="in-progress">
-        <td data-label="Epic">
-          {%- if d.epic -%}
-            {%- if site.jira and site.jira.base_url -%}
-              <a href="{{ site.jira.base_url }}/{{ d.epic }}" target="_blank" rel="noopener">{{ d.epic }}</a>
-            {%- else -%}
-              {{ d.epic }}
-            {%- endif -%}
-          {%- else -%}—{%- endif -%}
-        </td>
+    <tr data-status="in-progress">
+      <td data-label="Epic">
+        {%- if d.epic -%}
+        {%- if site.jira and site.jira.base_url -%}
+        <a href="{{ site.jira.base_url }}/{{ d.epic }}" target="_blank" rel="noopener">{{ d.epic }}</a>
+        {%- else -%}
+        {{ d.epic }}
+        {%- endif -%}
+        {%- else -%}—{%- endif -%}
+      </td>
 
-        <td data-label="Title">{{ d.title }}</td>
-        <td data-label="Family">{{ d.family }}</td>
-        <td data-label="Version">{{ d.version }}</td>
+      <td data-label="Title">{{ d.title }}</td>
+      <td data-label="Family">{{ d.family }}</td>
+      <td data-label="Version">{{ d.version }}</td>
 
-        {%- assign draft_updated = d.pr_updated_at | default: d.updated_at | default: d.created_at -%}
-        <td data-label="Created At">{{ d.created_at | default: draft_updated }}</td>
-        <td class="col-updated" data-label="Updated At">{{ draft_updated }}</td>
+      {%- assign draft_updated = d.pr_updated_at | default: d.updated_at | default: d.created_at -%}
+      <td data-label="Created At">{{ d.created_at | default: draft_updated }}</td>
+      <td class="col-updated" data-label="Updated At">{{ draft_updated }}</td>
 
-        <td data-label="Access" class="cell-actions">
-          <a class="view-btn" href="{{ d.url | relative_url }}">View</a>
-          {%- if d.pr_url -%}
-            <a class="view-btn" href="{{ d.pr_url }}">PR #{{ d.pr | default: d.pr_number }}</a>
-          {%- endif -%}
-        </td>
-      </tr>
+      <td data-label="Access">
+        <span class="cell-actions">
+          <a class="view-btn" href="{{ latest.url | relative_url }}">View</a>
+          {% if latest.pr_url %}
+          <a class="view-btn" href="{{ latest.pr_url }}" target="_blank" rel="noopener">PR #{{ latest.pr }}</a>
+          {% endif %}
+        </span>
+      </td>
+    </tr>
     {%- endfor -%}
   </tbody>
 </table>
@@ -212,4 +214,29 @@ title: Home
 
   setUpdatedColumnVisible(false);
   applyFilters();  // respects saved tab
+
+  // Persist active tab & "show all" between visits
+  const TAB_KEY = 'specs.activeTab';
+  const SHOW_KEY = 'specs.showAll';
+
+  function loadPrefs() {
+    const savedTab = localStorage.getItem(TAB_KEY);
+    if (savedTab) {
+      tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.target === savedTab)));
+    }
+    const savedShow = localStorage.getItem(SHOW_KEY);
+    if (savedShow !== null) showAll.checked = savedShow === '1';
+    updateMode();
+  }
+
+  tabs.forEach(t => t.addEventListener('click', () => {
+    localStorage.setItem(TAB_KEY, t.dataset.target);
+  }));
+
+  showAll.addEventListener('change', () => {
+    localStorage.setItem(SHOW_KEY, showAll.checked ? '1' : '0');
+  });
+
+  loadPrefs();
+
 </script>
