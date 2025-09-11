@@ -34,8 +34,8 @@ on:
     types: [opened, reopened, synchronize, labeled, unlabeled, closed]
     paths:
       - "_specs/**"
-  schedule:
-    - cron: "*/15 * * * *"
+  # schedule:
+  #   - cron: "*/15 * * * *"
 
 # needed to write branch (optional mirror) and to deploy Pages via Actions
 permissions:
