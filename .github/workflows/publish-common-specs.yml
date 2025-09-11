@@ -30,16 +30,20 @@ on:
       - "spec.html"
       - "style.css"
       - ".github/workflows/**"
+  # PRs that actually change files (respect paths)
   pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled, closed]
+    types: [opened, reopened, synchronize]
     paths:
       - "_specs/**"
+
+  # PR meta events that don’t have file diffs — no paths filter here
+  pull_request_target:
+    types: [labeled, unlabeled, closed]
   # schedule:
   #   - cron: "*/15 * * * *"
 
 # needed to write branch (optional mirror) and to deploy Pages via Actions
 permissions:
-  contents: write
   pages: write
   id-token: write
   pull-requests: read
@@ -133,30 +137,6 @@ jobs:
               }
             }
             core.setOutput('overlay_count', String(overlayCount));
-
-      # Optional: keep an inspectable mirror of the staged source
-      - name: Mirror staged source to common-specs branch (create if missing)
-        if: ${{ inputs.mirror_branch != false }}
-        run: |
-          set -e
-          git fetch origin common-specs || true
-          rm -rf /tmp/common-specs
-          if git show-ref --verify --quiet refs/remotes/origin/common-specs; then
-            git worktree add -B common-specs /tmp/common-specs origin/common-specs
-          else
-            git worktree add -B common-specs /tmp/common-specs
-          fi
-          rsync -a --delete /tmp/site/ /tmp/common-specs/
-          cd /tmp/common-specs
-          git config user.name  "spec-bot"
-          git config user.email "spec-bot@users.noreply.github.com"
-          if ! git diff --quiet; then
-            git add -A
-            git commit -m "Mirror staged source (overlays=${{ steps.build_drafts.outputs.overlay_count || '0' }}) from ${BASE_REF}"
-            git push origin common-specs
-          else
-            echo "Mirror: no changes."
-          fi
 
       # ---------- Build Jekyll locally ----------
       - name: Set up Ruby for Jekyll
