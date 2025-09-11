@@ -1,18 +1,7 @@
 name: Publish site (main + drafts overlay)
 
 on:
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: "Base ref to stage (usually main)"
-        required: false
-        default: "main"
-      force_deploy:
-        description: "Deploy even if no source diff detected"
-        type: boolean
-        required: false
-        default: false
-
+  # Deploy the production site when main changes
   push:
     branches: [main]
     paths:
@@ -27,16 +16,38 @@ on:
       - "style.css"
       - ".github/workflows/**"
 
+  # Keep overlays fresh on PR lifecycle (labels at creation included)
   pull_request_target:
-    types: [opened, reopened, synchronize, labeled, unlabeled, closed]
+    branches: [main]  # base branch = main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+      - unlabeled
+      - closed
 
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Base ref to stage (usually main)"
+        required: false
+        default: "main"
+      force_deploy:
+        description: "Deploy even if no source diff detected"
+        type: boolean
+        required: false
+        default: false
+
+# Only what we need (no branch pushes)
 permissions:
   pages: write
   id-token: write
-  # contents: write  # not needed since we don't push any branches
 
 concurrency:
-  group: publish-common-specs
+  group: publish-common-specs-${{ github.event.pull_request.number || 'main' }}
   cancel-in-progress: true
 
 jobs:
@@ -46,41 +57,94 @@ jobs:
       BASE_REF: ${{ inputs.ref || 'main' }}
 
     steps:
+      # -------- Early guard to avoid building on non-spec PRs --------
+      - name: "Guard: allow push/dispatch, otherwise only spec PRs touching _specs/"
+        id: guard
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Always OK for push/dispatch (we deploy from main there)
+            if (context.eventName !== 'pull_request_target') {
+              core.setOutput('ok', 'true');
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+
+            // Extra safety: only PRs into main
+            if ((pr.base?.ref || '') !== 'main') {
+              core.notice(`Skip: PR base is "${pr.base?.ref}", not "main".`);
+              core.setOutput('ok', 'false');
+              return;
+            }
+
+            // Must have our spec labels
+            const hasLabel = (pr.labels || []).some(l =>
+              /^(spec:proposal|in-progress)$/i.test((l.name || ''))
+            );
+            if (!hasLabel) {
+              core.notice('Skip: not a spec PR (labels missing).');
+              core.setOutput('ok', 'false');
+              return;
+            }
+
+            // Must actually change _specs/
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, per_page: 100 }
+            );
+            const touchesSpecs = files.some(f => f.filename.startsWith('_specs/'));
+            if (!touchesSpecs) {
+              core.notice('Skip: PR does not change _specs/.');
+              core.setOutput('ok', 'false');
+              return;
+            }
+
+            core.setOutput('ok', 'true');
+
+      # -------- Stage the source (base = main or provided ref) --------
       - name: Checkout base ref
+        if: steps.guard.outputs.ok == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ env.BASE_REF }}
 
       - name: Stage current source into /tmp/site
+        if: steps.guard.outputs.ok == 'true'
         run: |
           set -e
           rm -rf /tmp/site && mkdir -p /tmp/site
           rsync -a --delete --exclude '.git' ./ /tmp/site/
           rm -rf /tmp/site/_draft_specs
 
+      # -------- Build _draft_specs overlay from open proposal/in-progress PRs --------
       - name: Build _draft_specs overlay from open proposal PRs
+        if: steps.guard.outputs.ok == 'true'
         id: build_drafts
         uses: actions/github-script@v7
         with:
           script: |
             const { execSync } = require('node:child_process');
-            const fs = require('fs'); const path = require('path');
-
+            const fs = require('fs');
+            const path = require('path');
             const owner = context.repo.owner, repo = context.repo.repo;
 
-            // Collect OPEN PRs that look like proposals (or marked in-progress)
+            // Collect OPEN PRs
             const prs = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: 'open', per_page: 100
             });
 
             let overlayCount = 0;
+
             for (const pr of prs) {
+              // Only overlay PRs with our labels
               const hasWanted = (pr.labels || []).some(l =>
-                /^(spec:proposal|in-progress)$/i.test((l.name||''))
+                /^(spec:proposal|in-progress)$/i.test((l.name || ''))
               );
               if (!hasWanted) continue;
 
+              // Read changed files to find spec dirs
               const files = await github.paginate(github.rest.pulls.listFiles, {
                 owner, repo, pull_number: pr.number, per_page: 100
               });
@@ -94,23 +158,25 @@ jobs:
               for (const dir of dirs) {
                 const m = dir.match(/^_specs\/([^/]+)\/([^/]+)/);
                 if (!m) continue;
-                const [_, family, version] = m;
+                const [, family, version] = m;
 
                 const dst = path.join('/tmp/site/_draft_specs', family, version);
                 fs.mkdirSync(dst, { recursive: true });
 
-                const list = execSync(`git ls-tree -r --name-only ${pr.head.sha} '${dir}'`, {encoding:'utf8'})
-                               .trim().split('\n').filter(Boolean);
+                // List files from the PR head for that dir
+                const listRaw = execSync(`git ls-tree -r --name-only ${pr.head.sha} '${dir}'`, { encoding: 'utf8' }).trim();
+                const list = listRaw ? listRaw.split('\n').filter(Boolean) : [];
 
                 for (const p of list) {
                   const rel = p.slice(dir.length + 1);
                   const out = path.join(dst, rel);
                   fs.mkdirSync(path.dirname(out), { recursive: true });
-                  const blob = execSync(`git show ${pr.head.sha}:'${p.replace(/'/g,"'\\''")}'`, {encoding:'utf8'});
+                  const safe = p.replace(/'/g, "'\\''");
+                  const blob = execSync(`git show ${pr.head.sha}:'${safe}'`, { encoding: 'utf8' });
                   fs.writeFileSync(out, blob);
                 }
 
-                // inject PR metadata into the draft index.md (if present)
+                // Inject PR metadata into draft index.md if present
                 const idx = path.join(dst, 'index.md');
                 if (fs.existsSync(idx)) {
                   const src = fs.readFileSync(idx, 'utf8');
@@ -123,10 +189,12 @@ jobs:
                 overlayCount++;
               }
             }
+
             core.setOutput('overlay_count', String(overlayCount));
 
-      # ---------- Build Jekyll locally ----------
+      # -------- Build the Jekyll site locally --------
       - name: Set up Ruby for Jekyll
+        if: steps.guard.outputs.ok == 'true'
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
@@ -134,6 +202,7 @@ jobs:
           working-directory: /tmp/site
 
       - name: Install Jekyll (if no Gemfile)
+        if: steps.guard.outputs.ok == 'true'
         run: |
           set -e
           cd /tmp/site
@@ -142,6 +211,7 @@ jobs:
           fi
 
       - name: Build Jekyll site
+        if: steps.guard.outputs.ok == 'true'
         env:
           JEKYLL_ENV: production
         run: |
@@ -154,19 +224,19 @@ jobs:
           fi
           test -d /tmp/site/_site
 
-      # ---------- Deploy to GitHub Pages via Actions ----------
+      # -------- Deploy to GitHub Pages (ONLY push to main or manual run) --------
       - name: Configure Pages
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-pages-artifact@v3
         with:
           path: /tmp/site/_site
 
       - name: Deploy to Pages
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        if: steps.guard.outputs.ok == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         id: deploy
         uses: actions/deploy-pages@v4
         with:
