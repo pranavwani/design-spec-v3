@@ -7,16 +7,12 @@ on:
         description: "Base ref to stage (usually main)"
         required: false
         default: "main"
-      mirror_branch:
-        description: "Also mirror staged source to the 'common-specs' branch"
-        type: boolean
-        required: false
-        default: true
       force_deploy:
         description: "Deploy even if no source diff detected"
         type: boolean
         required: false
         default: false
+
   push:
     branches: [main]
     paths:
@@ -30,23 +26,14 @@ on:
       - "spec.html"
       - "style.css"
       - ".github/workflows/**"
-  # PRs that actually change files (respect paths)
-  pull_request:
-    types: [opened, reopened, synchronize]
-    paths:
-      - "_specs/**"
 
-  # PR meta events that don’t have file diffs — no paths filter here
   pull_request_target:
-    types: [labeled, unlabeled, closed]
-  # schedule:
-  #   - cron: "*/15 * * * *"
+    types: [opened, reopened, synchronize, labeled, unlabeled, closed]
 
-# needed to write branch (optional mirror) and to deploy Pages via Actions
 permissions:
   pages: write
   id-token: write
-  pull-requests: read
+  # contents: write  # not needed since we don't push any branches
 
 concurrency:
   group: publish-common-specs
@@ -57,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BASE_REF: ${{ inputs.ref || 'main' }}
+
     steps:
       - name: Checkout base ref
         uses: actions/checkout@v4
@@ -69,7 +57,6 @@ jobs:
           set -e
           rm -rf /tmp/site && mkdir -p /tmp/site
           rsync -a --delete --exclude '.git' ./ /tmp/site/
-          # We'll fill /tmp/site/_draft_specs next
           rm -rf /tmp/site/_draft_specs
 
       - name: Build _draft_specs overlay from open proposal PRs
@@ -169,20 +156,18 @@ jobs:
 
       # ---------- Deploy to GitHub Pages via Actions ----------
       - name: Configure Pages
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: /tmp/site/_site
 
       - name: Deploy to Pages
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         id: deploy
         uses: actions/deploy-pages@v4
         with:
-          # redeploy if forced, otherwise default behavior is fine
-          preview: ${{ inputs.force_deploy }}
-
-      - name: Done
-        run: |
-          echo "Deployed to: ${{ steps.deploy.outputs.page_url }}"
+          preview: ${{ inputs.force_deploy || false }}
