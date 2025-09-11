@@ -304,3 +304,25 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
 @media (max-width: 600px) {
   .cell-actions { flex-wrap: wrap; gap: 6px; }
 }
+
+/* Row with tabs (left) and "Show all versions" (right) */
+.toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin:12px 0 8px;  /* space above/below */
+}
+
+/* Let the tabs breathe and not look stitched to the search box */
+.tabs{ border-bottom:1px solid var(--border); margin:0; }
+.searchbar{ margin-top:10px; }
+
+/* Inline variant of the toggle for the toolbar */
+.toggle.inline{ margin:0; font-size:14px; color:var(--sub); display:inline-flex; gap:8px; align-items:center; }
+.toggle.inline input{ transform:scale(1.05); }
+
+@media (max-width:700px){
+  .toolbar{ flex-wrap:wrap; }
+  .toggle.inline{ order:2; }  /* allows wrapping under tabs on small screens */
+}

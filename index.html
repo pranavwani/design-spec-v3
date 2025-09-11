@@ -20,10 +20,19 @@ title: Home
     </div>
   </div>
 
-  <div class="tabs" role="tablist" aria-label="Spec status">
-    <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
-    <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
-    <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
+  <div class="toolbar" aria-label="Spec filters">
+    <div class="tabs" role="tablist" aria-label="Spec status">
+      <button class="tab" role="tab" aria-selected="true" data-target="active">Active</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="in-progress">In-Progress</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="deprecated">Deprecated</button>
+    </div>
+
+    <div class="table-toolbar">
+      <label class="toggle">
+        <input id="showAll" type="checkbox" />
+        <span>Show all versions</span>
+      </label>
+    </div>
   </div>
 
   <div class="searchbar">
@@ -139,13 +148,6 @@ title: Home
     {%- endfor -%}
   </tbody>
 </table>
-
-<div class="table-toolbar">
-  <label class="toggle">
-    <input id="showAll" type="checkbox" />
-    <span>Show all versions</span>
-  </label>
-</div>
 
 <div id="empty" class="empty" hidden>No specs match this filter.</div>
 
