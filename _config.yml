@@ -22,3 +22,5 @@ defaults:
 # optional: Jira base for Epic links
 jira:
   base_url: https://hclsw-jiracentral.atlassian.net/browse
+
+repo_url: "https://github.com/pranavwani/design-spec-v1"

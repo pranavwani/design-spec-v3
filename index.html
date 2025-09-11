@@ -6,7 +6,7 @@ title: Home
   <h1>Welcome to {{ site.title }}</h1>
   <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
   <div class="actions">
-    {% assign repo = site.github.repository_url %}
+    {% assign repo = site.github.repository_url | default: site.repo_url %}
 
     <a class="btn primary" href="{{ repo }}/issues/new?template=new-spec.yml">
       Submit a New Design Spec
