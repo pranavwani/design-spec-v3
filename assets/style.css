@@ -467,14 +467,13 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   padding: 16px 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center; /* center content horizontally */
+  position: relative;      /* allows absolute back button */
 }
 
 .navbar1 .back1 {
-  position: sticky;
-  /* fixes to the left side */
-  left: 16px;
-  /* spacing from edge */
+  position: absolute;   /* fixes to the left side */
+  left: 16px;           /* spacing from edge */
   text-decoration: none;
   color: #fff;
   padding: 6px 10px;
@@ -483,7 +482,6 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   font-size: 14px;
   transition: background .2s ease;
 }
-
 .navbar1 .back1:hover {
   background: #1e293b;
 }
@@ -494,3 +492,4 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   font-weight: 600;
   text-align: center;
 }
+
