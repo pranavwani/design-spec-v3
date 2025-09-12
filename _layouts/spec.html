@@ -154,12 +154,6 @@ and build a normalized list with label/order (front-matter wins; otherwise map/f
   </nav>
 </aside>
 
-  <!-- <main id="spec-content" class="content">
-    <div class="content-card1">
-      {{ content }}
-    </div>
-  </main> -->
-
   <main id="spec-content" class="content">
   <div id="raw-content">
     {{ content }}
@@ -228,8 +222,8 @@ Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
       sections1.forEach(sec => raw1.appendChild(sec));
 
       curr.style.opacity = '0.35';
-      curr.replaceWith(raw1);
-      raw1.style.opacity = '1';
+      curr.replaceWith(main);
+      main.style.opacity = '1';
 
       if (doc.title) document.title = doc.title;
       setActive(abs);
