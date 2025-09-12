@@ -378,3 +378,90 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   .toolbar{ flex-wrap:wrap; }
   .toggle.inline{ order:2; }  /* allows wrapping under tabs on small screens */
 }
+
+
+/* --- Toolbar polish --- */
+.toolbar1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* Tabs look like pills */
+.tabs1 {
+  display: flex;
+  gap: 8px;
+}
+.tab1 {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #f9fafb;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.tab1[aria-selected="true"] {
+  background: #eef2ff;
+  color: #1e40af;
+  border-color: #c7d2fe;
+}
+.tab1:hover {
+  background: #f3f4f6;
+}
+
+/* Fancy toggle pill */
+.toggle-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--sub);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-pill input {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  position: relative;
+  outline: none;
+  transition: background .2s ease;
+}
+.toggle-pill input:checked {
+  background: #2563eb;
+}
+.toggle-pill input::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: white;
+  transition: transform .2s ease;
+}
+.toggle-pill input:checked::before {
+  transform: translateX(16px);
+}
+.pill-label {
+  white-space: nowrap;
+}
+
+/* Responsive: stack toggle under tabs */
+@media (max-width: 700px) {
+  .toolbar1 {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
