@@ -203,7 +203,11 @@ Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
       const curr = document.querySelector(containerSel);
       if (!next || !curr) return location.assign(abs);
 
+      const main = document.createElement("main");
+      main.id = "spec-content";
+      main.className = "content";
       const raw1 = next.querySelector("#raw-content");
+      main.appendChild(raw1);
       const sections1 = [];
       let current1;
 
