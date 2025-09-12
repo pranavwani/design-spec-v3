@@ -19,7 +19,6 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
   </div>
 </div>
 
-<!-- <header class="spec-header"> -->
   <h1 class="spec-heading">{{ page.title }}</h1>
   <div class="spec-header-right">
     {%- if meta.epic -%}
@@ -56,7 +55,6 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
       <span class="pill pill--muted">Created {{ meta.created_at }}</span>
     {%- endif -%}
   </div>
-<!-- </header> -->
 
 {%- comment -%}
 Collect files that belong to this space, keep only top-level (index + first-level pages),
@@ -116,7 +114,7 @@ and build a normalized list with label/order (front-matter wins; otherwise map/f
 {%- assign sorted = normalized | sort: 'order' -%}
 
 <div class="spec-grid">
-  <aside class="sidebar">
+  <!-- <aside class="sidebar">
     <nav class="sidebar-nav">
       <ul class="side-links">
         {%- for d in docs -%}
@@ -136,7 +134,31 @@ and build a normalized list with label/order (front-matter wins; otherwise map/f
         {%- endfor -%}
       </ul>
     </nav>
-  </aside>
+  </aside> -->
+
+
+  <aside class="sidebar1">
+  <nav class="sidebar-nav1">
+    <ul class="side-links1">
+      {%- for d in docs -%}
+        {%- assign rel = d.path | remove_first: space_dir -%}
+        {%- assign depth = rel | split:'/' | size -%}
+        {%- if depth > 1 -%}{% continue %}{%- endif -%}
+
+        {%- assign href = d.url | replace: '/index.html','/' -%}
+        {%- assign is_active = page.url == d.url -%}
+        <li>
+          <a href="{{ href | relative_url }}"
+             class="side-link1 {% if is_active %}active{% endif %}"
+             {% if is_active %}aria-current="page"{% endif %}>
+            {{ d.nav_title | default: d.title | default: 'Untitled' }}
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </nav>
+</aside>
+
 
   <main id="spec-content" class="content">
     <article class="content-card">

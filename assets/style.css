@@ -493,3 +493,48 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   text-align: center;
 }
 
+
+
+
+/* Sidebar layout */
+.sidebar1 {
+  width: 240px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  padding: 20px;
+}
+
+.sidebar-nav1 {
+  display: flex;
+  flex-direction: column;
+}
+
+.side-links1 {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.side-links1 li {
+  margin-bottom: 8px;
+}
+
+.side-link1 {
+  display: block;
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #333;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.side-link1:hover {
+  background: #f3f4f6;
+  color: #111;
+}
+
+.side-link1.active {
+  background: #2563eb;
+  color: #fff;
+}
