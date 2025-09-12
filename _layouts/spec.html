@@ -12,15 +12,14 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
 {%- assign space_index = coll | where: "url", root | first -%}
 {%- assign meta = space_index | default: page -%}
 
-<div class="navbar">
-  <div class="title-group">
+<div class="navbar1">
+   <a class="back1" href="{{ '/' | relative_url }}">← Back</a>
+  <div class="title-group1">
     <h1>{{ site.title }}</h1>
-    <!-- <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p> -->
   </div>
 </div>
 
-<header class="spec-header">
-  <a class="back" href="{{ '/' | relative_url }}">← Back</a>
+<!-- <header class="spec-header"> -->
   <h1 class="spec-heading">{{ page.title }}</h1>
   <div class="spec-header-right">
     {%- if meta.epic -%}
@@ -57,7 +56,7 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
       <span class="pill pill--muted">Created {{ meta.created_at }}</span>
     {%- endif -%}
   </div>
-</header>
+<!-- </header> -->
 
 {%- comment -%}
 Collect files that belong to this space, keep only top-level (index + first-level pages),

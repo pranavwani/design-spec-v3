@@ -465,3 +465,44 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
     align-items: flex-start;
   }
 }
+
+
+.navbar1 {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #0f172a;
+  color: white;
+  padding: 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* center content horizontally */
+  position: relative;
+  /* allows absolute back button */
+}
+
+.navbar1 .back1 {
+  position: absolute;
+  /* fixes to the left side */
+  left: 16px;
+  /* spacing from edge */
+  text-decoration: none;
+  color: #fff;
+  padding: 6px 10px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: background .2s ease;
+}
+
+.navbar1 .back1:hover {
+  background: #1e293b;
+}
+
+.navbar1 .title-group1 h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
