@@ -61,28 +61,51 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 .navbar {
   position: sticky;
   top: 0;
-  /* stick to the top */
   z-index: 1000;
-  /* stay above content */
   background: #0f172a;
-  /* dark background */
   color: white;
   padding: 15px 20px;
-  background: #712cf9;
-  height: 80px;
+
+  display: flex;
+  /* flexbox */
+  align-items: center;
+  /* vertical center */
+  justify-content: space-between;
+  /* left + right */
 }
 
-.navbar a {
-  color: white;
-  margin-right: 20px;
+.navbar .title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.navbar p {
+  margin: 0;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
   text-decoration: none;
+  font-size: 14px;
+  background: #334155;
+  color: white;
 }
 
-.content {
-  height: 2000px;
-  /* just to make page scroll */
-  background: linear-gradient(#f0f0f0, #ccc);
-  padding: 20px;
+.btn.primary {
+  background: #0ea5a4;
 }
 
 .spec-header {

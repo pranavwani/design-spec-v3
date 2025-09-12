@@ -3,28 +3,46 @@ layout: base
 title: Home
 ---
 
-<div class="navbar">
+<!-- <div class="navbar">
     <h1>Welcome to {{ site.title }}</h1>
       <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
+  </div> -->
+
+
+  <div class="navbar">
+    <div class="title-group">
+       <h1>Welcome to {{ site.title }}</h1>
+      <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
+    </div>
+
+     {% assign repo = site.github.repository_url | default: site.repo_url %}
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/pranavwani/design-spec-v2/issues/new?template=new-spec.yml" target="_blank" rel="noopener">
+        Submit a New Design Spec
+      </a>
+      <a class="btn" href="https://github.com/pranavwani/design-spec-v2/issues/new?template=update-spec.yml" target="_blank" rel="noopener">
+        Submit an Update
+      </a>
+    </div>
   </div>
 
 <!-- <header class="hero"> -->
-  <div class="hero-top">
+  <!-- <div class="hero-top"> -->
     <!-- <div class="hero-text">
       <h1>Welcome to {{ site.title }}</h1>
       <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
     </div> -->
 
-    {% assign repo = site.github.repository_url | default: site.repo_url %}
-    <div class="actions">
+    <!-- {% assign repo = site.github.repository_url | default: site.repo_url %} -->
+    <!-- <div class="actions">
       <a class="btn primary" href="{{ repo }}/issues/new?template=new-spec.yml" target="_blank" rel="noopener">
         Submit a New Design Spec
       </a>
       <a class="btn" href="{{ repo }}/issues/new?template=update-spec.yml" target="_blank" rel="noopener">
         Submit an Update
       </a>
-    </div>
-  </div>
+    </div> -->
+  <!-- </div> -->
 
   <div class="toolbar" aria-label="Spec filters">
     <div class="tabs" role="tablist" aria-label="Spec status">
