@@ -255,6 +255,45 @@ title: Home
     window.location.href = "/design-spec-v2/";
   }
 
+  // Select tabs and indicator
+const tabs1 = document.querySelectorAll('.tab1');
+const indicator = document.querySelector('.tab-indicator');
+
+// Move the indicator under the active tab
+function moveIndicator() {
+  const activeTab = document.querySelector('.tab1[aria-selected="true"]');
+  const rect = activeTab.getBoundingClientRect();
+  const containerRect = activeTab.parentElement.getBoundingClientRect();
+
+  indicator.style.width = rect.width + 'px';
+  indicator.style.left = (rect.left - containerRect.left) + 'px';
+
+  // Change gradient based on tab
+  switch(activeTab.dataset.target) {
+    case 'active':
+      indicator.style.background = 'linear-gradient(135deg, #4f46e5, #6366f1)';
+      break;
+    case 'in-progress':
+      indicator.style.background = 'linear-gradient(135deg, #f97316, #fb923c)';
+      break;
+    case 'deprecated':
+      indicator.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
+      break;
+  }
+}
+
+// Initial indicator placement
+moveIndicator();
+
+// On tab click
+tabs1.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs1.forEach(t => t.setAttribute('aria-selected', 'false'));
+    tab.setAttribute('aria-selected', 'true');
+    moveIndicator();
+  });
+});
+
   
 
 </script>
