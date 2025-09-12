@@ -75,6 +75,26 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   text-align: center;
 }
 
+.title-group {
+  gap: 8px;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.title-group:hover {
+  color: #007bff;
+  transform: scale(1.02);
+}
+
+.title-group h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.home-icon svg {
+  display: block;
+}
+
 .navbar h1 {
   margin: 0;
   font-size: 20px;
