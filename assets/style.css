@@ -538,3 +538,52 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   background: #2563eb;
   color: #fff;
 }
+
+
+.main {
+  flex: 1;
+  padding: 24px 40px;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #e5e7eb;
+  color: #444;
+}
+
+.tag.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.tag.owner {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tag.team {
+  background: #dbeafe;
+  color: #1e40af;
+}

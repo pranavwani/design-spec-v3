@@ -19,7 +19,51 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
   </div>
 </div>
 
-  <h1 class="spec-heading">{{ page.title }}</h1>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="header">
+      <h1 class="spec-heading">{{ page.title }}</h1>
+      <div class="tags">
+        {%- if meta.epic -%}
+      {%- assign _epic = meta.epic | strip -%}
+      {%- if site.jira and site.jira.base_url -%}
+        <a class="tag" href="{{ site.jira.base_url | append: '/' | append: _epic }}" target="_blank" rel="noopener">
+          Epic {{ _epic }}
+        </a>
+      {%- else -%}
+        <span class="tag">Epic {{ _epic }}</span>
+      {%- endif -%}
+    {%- endif -%}
+    {%- if meta.status -%}
+      <span class="tag active">{{ meta.status | capitalize }}</span>
+    {%- endif -%}
+    {%- if meta.updated_at -%}
+      <span class="tag">Updated {{ meta.updated_at }}</span>
+    {%- endif -%}
+    {%- if meta.owner -%}
+      {%- assign _owner = meta.owner | strip -%}
+      {%- if _owner | slice: 0, 1 == '@' -%}
+        {%- assign _handle = _owner | remove: '@' -%}
+        <a class="tag owner" href="https://github.com/{{ _handle | uri_escape }}" target="_blank" rel="noopener" title="Open {{ _owner }} on GitHub">
+          Owner {{ _owner }}
+        </a>
+      {%- else -%}
+        <span class="tag owner">Owner {{ _owner }}</span>
+      {%- endif -%}
+    {%- endif -%}
+    {%- if meta.team -%}
+      <span class="tag">Team {{ meta.team }}</span>
+    {%- endif -%}
+    {%- if meta.created_at -%}
+      <span class="tag">Created {{ meta.created_at }}</span>
+    {%- endif -%}
+
+      </div>
+    </div>
+     </div> 
+
+  <!-- <h1 class="spec-heading">{{ page.title }}</h1>
   <div class="spec-header-right">
     {%- if meta.epic -%}
       {%- assign _epic = meta.epic | strip -%}
@@ -54,7 +98,7 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
     {%- if meta.created_at -%}
       <span class="pill pill--muted">Created {{ meta.created_at }}</span>
     {%- endif -%}
-  </div>
+  </div> -->
 
 {%- comment -%}
 Collect files that belong to this space, keep only top-level (index + first-level pages),
@@ -114,29 +158,6 @@ and build a normalized list with label/order (front-matter wins; otherwise map/f
 {%- assign sorted = normalized | sort: 'order' -%}
 
 <div class="spec-grid">
-  <!-- <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <ul class="side-links">
-        {%- for d in docs -%}
-          {%- assign rel = d.path | remove_first: space_dir -%}
-          {%- assign depth = rel | split:'/' | size -%}
-          {%- if depth > 1 -%}{% continue %}{%- endif -%}
-
-          {%- assign href = d.url | replace: '/index.html','/' -%}
-          {%- assign is_active = page.url == d.url -%}
-          <li>
-            <a href="{{ href | relative_url }}"
-               class="{% if is_active %}active{% endif %}"
-               {% if is_active %}aria-current="page"{% endif %}>
-              {{ d.nav_title | default: d.title | default: 'Untitled' }}
-            </a>
-          </li>
-        {%- endfor -%}
-      </ul>
-    </nav>
-  </aside> -->
-
-
   <aside class="sidebar1">
   <nav class="sidebar-nav1">
     <ul class="side-links1">
