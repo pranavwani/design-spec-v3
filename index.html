@@ -158,7 +158,7 @@ title: Home
 
 <script>
   function currentRows() { return [...document.querySelectorAll('tbody:not([hidden]) tr')]; }
-  const tabs = [...document.querySelectorAll('.tab')];
+  const tabs = [...document.querySelectorAll('.tab1')];
   const q = document.getElementById('q');
   const empty = document.getElementById('empty');
   const showAll = document.getElementById('showAll');
@@ -182,12 +182,12 @@ title: Home
 
   // Only show draft tbody when the In-Progress tab is active
   function syncDraftVisibility() {
-    const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
+    const activeTab = document.querySelector('.tab1[aria-selected="true"]').dataset.target;
     draftTbody.hidden = (activeTab !== 'in-progress');
   }
 
   function applyFilters() {
-    const activeTab = document.querySelector('.tab[aria-selected="true"]').dataset.target;
+    const activeTab = document.querySelector('.tab1[aria-selected="true"]').dataset.target;
     const term = (q.value || '').toLowerCase().trim();
 
     syncDraftVisibility();
