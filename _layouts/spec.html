@@ -227,7 +227,7 @@ Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
 
       if (doc.title) document.title = doc.title;
       setActive(abs);
-      if (scroll) raw1.scrollIntoView({ block: 'start' });
+     // if (scroll) raw1.scrollIntoView({ block: 'start' });
       if (push) history.pushState({ pjax: true, url: abs }, '', abs);
     }
 
