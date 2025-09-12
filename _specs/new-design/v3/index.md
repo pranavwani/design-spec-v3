@@ -4,15 +4,17 @@ epic: MXOP-1234
 family: New Design
 version: v3
 title: New Design
-status: in-progress
+status: active
 stage: dev
-spec_version: "1.0.0"
+spec_version: "1.0.1"
 owner: "@itsmanjumv"
 team: ""
 created_at: 2025-09-12
-updated_at:
+updated_at: "2025-09-12"
 tags: []
 changelog:
+  - date: "2025-09-12"
+    text: 'Merged PR #3: [Spec] New Design (scaffold)'
   - date: 2025-09-12
     text: "Initial scaffold from issue #2"
 nav_title: "Overview"
