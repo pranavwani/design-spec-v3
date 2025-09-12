@@ -203,13 +203,33 @@ Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
       const curr = document.querySelector(containerSel);
       if (!next || !curr) return location.assign(abs);
 
+      const raw1 = next.querySelector("#raw-content");
+      const sections1 = [];
+      let current1;
+
+      [...raw1.childNodes].forEach(node => {
+        if (node.tagName === "H2" || node.tagName === "H1") {
+          if (current1) sections1.push(current1);
+          current1 = document.createElement("div");
+          current1.className = "content-card1";
+          current1.appendChild(node);
+        } else if (current1) {
+          current1.appendChild(node);
+        }
+      });
+
+      if (current1) sections1.push(current1);
+
+      raw1.innerHTML = "";
+      sections1.forEach(sec => raw1.appendChild(sec));
+
       curr.style.opacity = '0.35';
-      curr.replaceWith(next);
-      next.style.opacity = '1';
+      curr.replaceWith(raw1);
+      raw1.style.opacity = '1';
 
       if (doc.title) document.title = doc.title;
       setActive(abs);
-      if (scroll) next.scrollIntoView({ block: 'start' });
+      if (scroll) raw1.scrollIntoView({ block: 'start' });
       if (push) history.pushState({ pjax: true, url: abs }, '', abs);
     }
 
