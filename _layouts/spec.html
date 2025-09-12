@@ -19,6 +19,7 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
         <path d="M8 .5l6.5 6V15a1 1 0 0 1-1 1H11a1 1 0 0 1-1-1V10H6v5a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1V6.5L8 .5z" />
       </svg>
     </span>
+     <h1>{{ site.title }}</h1>
   </div>
   
     {% assign repo = site.github.repository_url | default: site.repo_url %}
@@ -279,6 +280,6 @@ Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
 });
 
 function goHome() {
-    window.location.href = "/design-spec-v1/";
+    window.location.href = "/design-spec-v2/";
   }
 </script>
