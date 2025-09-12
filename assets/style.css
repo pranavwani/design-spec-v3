@@ -647,3 +647,32 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
 .content-card1 a:hover {
   text-decoration: underline;
 }
+
+
+/* Make the table full-width and add proper borders */
+#specTable {
+  width: 100%;
+  border-collapse: collapse;
+  /* merges borders for cleaner look */
+  table-layout: fixed;
+  /* makes column widths predictable */
+}
+
+#specTable th,
+#specTable td {
+  border: 1px solid #ccc;
+  /* light grey border */
+  padding: 8px 12px;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+#specTable th {
+  background-color: #f5f5f5;
+  /* light header background */
+}
+
+#specTable tr:nth-child(even) {
+  background-color: #fafafa;
+  /* subtle stripe for readability */
+}
