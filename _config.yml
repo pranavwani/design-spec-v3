@@ -1,6 +1,6 @@
 title: VoltMX Design Specs
 url: "https://pranavwani.github.io"     # domain
-baseurl: "/design-spec-v1"              # repo name for project sites
+baseurl: "/design-spec-v2"              # repo name for project sites
 
 # add/merge these keys
 collections:
@@ -23,4 +23,4 @@ defaults:
 jira:
   base_url: https://hclsw-jiracentral.atlassian.net/browse
 
-repo_url: "https://github.com/pranavwani/design-spec-v1"
+repo_url: "https://github.com/pranavwani/design-spec-v2"
