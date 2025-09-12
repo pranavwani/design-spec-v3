@@ -64,19 +64,15 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   z-index: 1000;
   background: #0f172a;
   color: white;
-  padding: 16px 12px 8px;
-
+  padding: 16px 12px;
   display: flex;
-  /* flexbox */
+  justify-content: center;  /* center title */
   align-items: center;
-  /* vertical center */
-  justify-content: space-between;
-  /* left + right */
+  position: relative;       /* so actions can be absolutely positioned */
 }
 
 .navbar .title-group {
-  display: flex;
-  flex-direction: column;
+  text-align: center;
 }
 
 .navbar h1 {
@@ -84,13 +80,9 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   font-size: 20px;
 }
 
-.navbar p {
-  margin: 0;
-  font-size: 14px;
-  color: #94a3b8;
-}
-
 .actions {
+  position: absolute;
+  right: 16px;   /* stick to right edge */
   display: flex;
   gap: 10px;
 }
@@ -466,7 +458,6 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   }
 }
 
-
 .navbar1 {
   position: sticky;
   top: 0;
@@ -477,13 +468,10 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   display: flex;
   align-items: center;
   justify-content: center;
-  /* center content horizontally */
-  position: relative;
-  /* allows absolute back button */
 }
 
 .navbar1 .back1 {
-  position: absolute;
+  position: sticky;
   /* fixes to the left side */
   left: 16px;
   /* spacing from edge */
