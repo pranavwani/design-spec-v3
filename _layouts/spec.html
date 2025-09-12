@@ -12,17 +12,9 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
 {%- assign space_index = coll | where: "url", root | first -%}
 {%- assign meta = space_index | default: page -%}
 
-<!-- <div class="navbar1">
-   <a class="back1" href="{{ '/' | relative_url }}">← Back</a>
-  <div class="title-group1">
-    <h1>{{ site.title }}</h1>
-  </div>
-</div> -->
-
 <div class="navbar">
     <div class="title-group">
       <h1>{{ site.title }}</h1>
-      <!-- <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p> -->
     </div>
   
     {% assign repo = site.github.repository_url | default: site.repo_url %}
@@ -38,8 +30,8 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
     </div>
   </div>
 
-
   <!-- Main -->
+  <main class="wrap">
   <div class="main">
     <div class="header">
       <h1 class="spec-heading">{{ page.title }}</h1>
@@ -81,43 +73,6 @@ Works for both /specs/... and /drafts/... because we use the page’s collection
       </div>
     </div>
      </div> 
-
-  <!-- <h1 class="spec-heading">{{ page.title }}</h1>
-  <div class="spec-header-right">
-    {%- if meta.epic -%}
-      {%- assign _epic = meta.epic | strip -%}
-      {%- if site.jira and site.jira.base_url -%}
-        <a class="pill pill--muted" href="{{ site.jira.base_url | append: '/' | append: _epic }}" target="_blank" rel="noopener">
-          Epic {{ _epic }}
-        </a>
-      {%- else -%}
-        <span class="pill pill--muted">Epic {{ _epic }}</span>
-      {%- endif -%}
-    {%- endif -%}
-    {%- if meta.status -%}
-      <span class="pill pill--{{ meta.status | downcase }}">{{ meta.status | capitalize }}</span>
-    {%- endif -%}
-    {%- if meta.updated_at -%}
-      <span class="pill pill--muted">Updated {{ meta.updated_at }}</span>
-    {%- endif -%}
-    {%- if meta.owner -%}
-      {%- assign _owner = meta.owner | strip -%}
-      {%- if _owner | slice: 0, 1 == '@' -%}
-        {%- assign _handle = _owner | remove: '@' -%}
-        <a class="pill pill--muted" href="https://github.com/{{ _handle | uri_escape }}" target="_blank" rel="noopener" title="Open {{ _owner }} on GitHub">
-          Owner {{ _owner }}
-        </a>
-      {%- else -%}
-        <span class="pill">Owner {{ _owner }}</span>
-      {%- endif -%}
-    {%- endif -%}
-    {%- if meta.team -%}
-      <span class="pill">Team {{ meta.team }}</span>
-    {%- endif -%}
-    {%- if meta.created_at -%}
-      <span class="pill pill--muted">Created {{ meta.created_at }}</span>
-    {%- endif -%}
-  </div> -->
 
 {%- comment -%}
 Collect files that belong to this space, keep only top-level (index + first-level pages),
@@ -217,6 +172,7 @@ and build a normalized list with label/order (front-matter wins; otherwise map/f
 PJAX-lite: intercept leftbar clicks, fetch target page, swap only #spec-content.
 Header + leftbar remain static. Degrades gracefully (normal links) if JS fails.
 {%- endcomment -%}
+</main>
 <script>
   (function () {
     const containerSel = '#spec-content';
