@@ -200,6 +200,32 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   align-self: center;
 }
 
+
+.navbar {
+  position: sticky;
+  top: 0;
+  /* stick to the top */
+  z-index: 1000;
+  /* stay above content */
+  background: #0f172a;
+  /* dark background */
+  color: white;
+  padding: 15px 20px;
+}
+
+.navbar a {
+  color: white;
+  margin-right: 20px;
+  text-decoration: none;
+}
+
+.content {
+  height: 2000px;
+  /* just to make page scroll */
+  background: linear-gradient(#f0f0f0, #ccc);
+  padding: 20px;
+}
+
 /* Mobile: stack buttons under title nicely */
 @media (max-width:700px){
   .hero-top{ flex-direction:column; align-items:stretch; }
@@ -325,30 +351,4 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
 @media (max-width:700px){
   .toolbar{ flex-wrap:wrap; }
   .toggle.inline{ order:2; }  /* allows wrapping under tabs on small screens */
-}
-
-
-.navbar {
-  position: sticky;
-  top: 0;
-  /* stick to the top */
-  z-index: 1000;
-  /* stay above content */
-  background: #0f172a;
-  /* dark background */
-  color: white;
-  padding: 15px 20px;
-}
-
-.navbar a {
-  color: white;
-  margin-right: 20px;
-  text-decoration: none;
-}
-
-.content {
-  height: 2000px;
-  /* just to make page scroll */
-  background: linear-gradient(#f0f0f0, #ccc);
-  padding: 20px;
 }
