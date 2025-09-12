@@ -4,7 +4,7 @@ title: Home
 ---
 
   <div class="navbar">
-    <div class="title-group">
+    <div class="title-group" onclick="goHome()">
       <span class="home-icon">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
       <path d="M8 .5l6.5 6V15a1 1 0 0 1-1 1H11a1 1 0 0 1-1-1V10H6v5a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1V6.5L8 .5z"/>
@@ -250,6 +250,10 @@ title: Home
   });
 
   loadPrefs();
+
+  function goHome() {
+    window.location.href = "/design-spec-v1/";
+  }
 
   
 
