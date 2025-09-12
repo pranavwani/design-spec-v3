@@ -57,6 +57,32 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 
 /* --- Spec page header --- */
 /* --- Modern header with full meta --- */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  /* stick to the top */
+  z-index: 1000;
+  /* stay above content */
+  background: #0f172a;
+  /* dark background */
+  color: white;
+  padding: 15px 20px;
+}
+
+.navbar a {
+  color: white;
+  margin-right: 20px;
+  text-decoration: none;
+}
+
+.content {
+  height: 2000px;
+  /* just to make page scroll */
+  background: linear-gradient(#f0f0f0, #ccc);
+  padding: 20px;
+}
+
 .spec-header {
   display: grid;
   grid-template-columns: auto 1fr auto;
