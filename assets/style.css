@@ -84,7 +84,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   right: 16px;   /* stick to right edge */
   display: flex;
   gap: 10px;
-  top: 5px;
+  top: 10px;
 }
 
 .btn {
