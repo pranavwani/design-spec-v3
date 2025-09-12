@@ -71,6 +71,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 }
 
 .navbar .title-group {
+  margin-left: 13%;
   text-align: center;
 }
 
@@ -80,6 +81,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 }
 
 .actions1 {
+  margin-right: 12%;
   position: absolute;
   right: 16px;   /* stick to right edge */
   display: flex;
