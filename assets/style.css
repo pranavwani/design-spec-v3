@@ -68,7 +68,6 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   display: flex;
   justify-content: center;  /* center title */
   align-items: center;
-  position: relative;       /* so actions can be absolutely positioned */
 }
 
 .navbar .title-group {
@@ -80,11 +79,12 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   font-size: 20px;
 }
 
-.actions {
+.actions1 {
   position: absolute;
   right: 16px;   /* stick to right edge */
   display: flex;
   gap: 10px;
+  top: 0px;
 }
 
 .btn {
