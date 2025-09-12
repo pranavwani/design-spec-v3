@@ -246,27 +246,6 @@ title: Home
 
   loadPrefs();
 
-  const searchInput = document.getElementById("q");
-  const table = document.getElementById("specTable");
-  const emptyMsg = document.getElementById("empty");
-
-  searchInput.addEventListener("input", () => {
-    const filter = searchInput.value.toLowerCase().trim();
-    let visibleCount = 0;
-
-    // loop through all tbody rows (latestTbody, allTbody, draftTbody)
-    table.querySelectorAll("tbody tr").forEach(row => {
-      const text = row.innerText.toLowerCase();
-      if (text.includes(filter)) {
-        row.style.display = "";
-        visibleCount++;
-      } else {
-        row.style.display = "none";
-      }
-    });
-
-    // show/hide empty state
-    emptyMsg.hidden = visibleCount > 0;
-  });
+  
 
 </script>
