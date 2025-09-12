@@ -2,12 +2,18 @@
 layout: base
 title: Home
 ---
-<header class="hero">
+
+<div class="navbar">
+    <h1>Welcome to {{ site.title }}</h1>
+      <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
+  </div>
+
+<!-- <header class="hero"> -->
   <div class="hero-top">
-    <div class="hero-text">
+    <!-- <div class="hero-text">
       <h1>Welcome to {{ site.title }}</h1>
       <p class="lead">Browse Active, In-Progress, and Deprecated specs.</p>
-    </div>
+    </div> -->
 
     {% assign repo = site.github.repository_url | default: site.repo_url %}
     <div class="actions">
@@ -38,7 +44,7 @@ title: Home
   <div class="searchbar">
     <input id="q" type="search" placeholder="Search by title, family, version, id…" aria-label="Search specs">
   </div>
-</header>
+<!-- </header> -->
 
 {% assign all_specs = site.specs %}
 
