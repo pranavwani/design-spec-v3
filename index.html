@@ -266,8 +266,7 @@ function moveIndicator() {
   const rect = activeTab.getBoundingClientRect();
   const containerRect = activeTab.parentElement.getBoundingClientRect();
 
-  if (indicator) {
-    indicator.style.width = rect.width + 'px';
+  indicator.style.width = rect.width + 'px';
   indicator.style.left = (rect.left - containerRect.left) + 'px';
 
   // Change gradient based on tab
@@ -281,8 +280,6 @@ function moveIndicator() {
     case 'deprecated':
       indicator.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
       break;
-  }
-    
   }
 }
 
