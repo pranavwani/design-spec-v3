@@ -64,51 +64,30 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
   z-index: 1000;
   background: #0f172a;
   color: white;
-  padding: 16px 12px;
+  padding: 12px 16px;
   display: flex;
-  justify-content: center;  /* center title */
   align-items: center;
-}
-
-.navbar .title-group {
-  margin-right: 58%;
-  text-align: center;
+  justify-content: space-between; /* cleaner */
 }
 
 .title-group {
-  display: flex;        
+  display: flex;
+  align-items: center;
   gap: 8px;
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .title-group:hover {
-  color: #007bff;
+  color: #38bdf8;
   transform: scale(1.02);
 }
 
-.title-group h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.home-icon svg {
-  display: block;
-}
-
-.navbar h1 {
-  margin: 0;
-  font-size: 20px;
-}
-
 .actions1 {
-  margin-right: 12%;
-  position: absolute;
-  right: 16px;   /* stick to right edge */
   display: flex;
   gap: 10px;
-  top: 10px;
 }
+
 
 .btn {
   padding: 8px 14px;
@@ -344,10 +323,35 @@ body{
 }
 
 /* 5) Table polish — hover stripe + sticky header on mobile wrap */
-table { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-tbody tr:hover { background: #fafbff; }
-th, td { vertical-align: middle; }
-th { background: #fff; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th {
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 2px solid var(--border);
+}
+
+td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr:last-child td {
+  border-bottom: none; /* remove last row border */
+}
+
+tbody tr:hover {
+  background: #f9fafb; /* subtle hover */
+}
+
 
 /* 6) Hero row balance – center actions vertically (you asked for this) */
 .hero-top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
@@ -415,51 +419,35 @@ a, .view-btn, .tab, .btn { transition: background .15s ease, color .15s ease, bo
   border-radius: 10px;
 }
 
-/* Tabs look like pills */
 .tabs1 {
   position: relative;
   display: flex;
   gap: 12px;
-}
-.tab1 {
-  position: relative;
-  padding: 8px 20px;
-  border-radius: 999px;
-  border: none;
-  font-weight: 600;
-  font-size: 14px;
-  background: #f3f4f6;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 1;
-}
-.tab1[aria-selected="true"] {
-  color: #fff;
-  font-weight: 700;
-  background: transparent; /* show gradient indicator */
-  z-index: 2; /* above indicator */
-}
-.tab1:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-}
-.tab1 {
-  background: #f3f4f6;
-}
-.tabs1 {
-  position: relative;
+  border-bottom: 1px solid var(--border);
 }
 
-/* Indicator full effect */
+.tab1 {
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: var(--sub);
+  transition: color .2s ease;
+}
+
+.tab1[aria-selected="true"] {
+  color: var(--ring);
+}
+
 .tab-indicator {
   position: absolute;
-  top: 0; /* cover entire tab height */
-  height: 100%;
-  border-radius: 999px;
-  transition: left 0.3s ease, width 0.3s ease, background 0.3s ease;
-  z-index: 1; /* below active tab text */
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px;
+  transition: left .25s ease, width .25s ease, background .25s ease;
 }
+
 
 /* Fancy toggle pill */
 .toggle-pill {
