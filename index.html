@@ -265,6 +265,7 @@ function moveIndicator() {
   const activeTab = document.querySelector('.tab1[aria-selected="true"]');
   const rect = activeTab.getBoundingClientRect();
   const containerRect = activeTab.parentElement.getBoundingClientRect();
+  
 
   indicator.style.width = rect.width + 'px';
   indicator.style.left = (rect.left - containerRect.left) + 'px';
