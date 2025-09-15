@@ -21,7 +21,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--border)}
 .toggle{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--sub)}
 .toggle input{transform:scale(1.1)}
 .u-hidden{display:none}
-.col-updated{color: #333;}
+.col-updated{color:var(--sub)}
 .topbar{margin-bottom:10px}
 .back{text-decoration:none;border:1px solid var(--border);padding:6px 10px;border-radius:8px}
 .spec-grid{display:grid;grid-template-columns:260px 1fr;gap:18px}
